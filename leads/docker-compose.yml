@@ -28,13 +28,43 @@ services:
       AGENTE_DB_USER: ${AGENTE_DB_USER:-}
       AGENTE_DB_PASSWORD: ${AGENTE_DB_PASSWORD:-}
 
+  # CRM novo (FastAPI + React), em crm.weap.com.br. Código em ./crm (pasta crm/ do repositório).
+  api:
+    build:
+      context: ./crm
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on: [db]
+    command: ["bash", "-c", "alembic upgrade head && python app/initial_data.py && fastapi run --workers 2 app/main.py"]
+    environment:
+      PROJECT_NAME: Weap Leads
+      ENVIRONMENT: production
+      FRONTEND_HOST: https://${DOMINIO_CRM:-crm.weap.com.br}
+      SECRET_KEY: ${CRM_SECRET_KEY:?Falta CRM_SECRET_KEY no .env}
+      FIRST_SUPERUSER: ${CRM_ADMIN_EMAIL:?Falta CRM_ADMIN_EMAIL no .env}
+      FIRST_SUPERUSER_PASSWORD: ${CRM_ADMIN_SENHA:?Falta CRM_ADMIN_SENHA no .env}
+      POSTGRES_SERVER: db
+      POSTGRES_DB: leads
+      POSTGRES_USER: leads
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      AGENTE_DB_URL: ${AGENTE_DB_URL:-}
+
+  web:
+    build:
+      context: ./crm
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+
   caddy:
     image: caddy:2
     restart: unless-stopped
-    depends_on: [app]
+    depends_on: [app, api, web]
     ports: ["80:80", "443:443"]
     environment:
       DOMINIO: ${DOMINIO:-leads.weap.com.br}
+      DOMINIO_CRM: ${DOMINIO_CRM:-crm.weap.com.br}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy:/data

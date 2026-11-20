@@ -56,8 +56,17 @@ TRUNCATE receita.cnaes, receita.municipios, receita.qualificacoes, receita.natur
 \copy receita.qualificacoes from program '$F qualificacoes $PASTA' with csv
 \copy receita.naturezas from program '$F naturezas $PASTA' with csv
 \copy receita.estabelecimentos from program '$F estabelecimentos $PASTA' with csv
-\copy receita.empresas from program '$F empresas $PASTA' with csv
+\copy receita.empresas (cnpj_basico, razao_social, natureza_juridica, capital_social, porte) from program '$F empresas $PASTA' with csv
 \copy receita.socios (cnpj_basico, tipo, nome, qualificacao, data_entrada, faixa_etaria) from program '$F socios $PASTA' with csv
+-- quantos sócios cada empresa tem (usado na nota dos leads, ver banco/05)
+DO \$\$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'receita' AND table_name = 'empresas' AND column_name = 'n_socios') THEN
+    UPDATE receita.empresas emp SET n_socios = s.qtd
+      FROM (SELECT cnpj_basico, least(count(*), 32767)::smallint AS qtd FROM receita.socios GROUP BY cnpj_basico) s
+     WHERE s.cnpj_basico = emp.cnpj_basico;
+    UPDATE receita.empresas SET n_socios = 0 WHERE n_socios IS NULL;
+  END IF;
+END \$\$;
 COMMIT;
 ANALYZE receita.estabelecimentos; ANALYZE receita.empresas; ANALYZE receita.socios;
 TRUNCATE receita.cidades;
