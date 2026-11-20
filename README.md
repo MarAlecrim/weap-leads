@@ -2,13 +2,14 @@
 
 Prospecção própria da Weap: base de empresas da Receita Federal, nota de cada lead, mini CRM e o disparo/agente de WhatsApp no n8n.
 
-No ar em **https://leads.weap.com.br** (servidor Hetzner "crm", pasta `/opt/weap-leads`).
+No ar em **https://leads.weap.com.br** (a partir da fase 1, o CRM em FastAPI + React substitui a tela PHP no mesmo endereço). Servidor Hetzner "crm", pasta `/opt/weap-leads`.
 
 ## Pastas
 
 | Pasta | O que tem |
 | --- | --- |
-| `leads/` | Tela de busca (PHP 8.3 + Postgres 16 + Caddy em docker compose) e o importador mensal da Receita |
+| `leads/` | Banco, importador mensal da Receita e a tela antiga em `app/` (PHP 8.3, fora do ar a partir da fase 1; + Postgres 16 + Caddy em docker compose) |
+| `leads/crm/` | CRM (leads.weap.com.br): `backend/` (FastAPI, SQLModel, Alembic) e `frontend/` (React, TanStack, shadcn). Guia: `docs/instalacao-crm.md` |
 | `n8n/` | Workflows do disparo e do agente de WhatsApp (banco `weap_sdr`) e as atualizações para colar nos nodes |
 | `docs/` | Guias de instalação, plano e prévias das telas |
 

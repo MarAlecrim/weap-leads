@@ -2,10 +2,9 @@
 -- Fonte: painel de hospedagem (CNPJ) + cobranças do Asaas, 20/11/2026.
 -- Fora: Cesar Pires (não foi venda) e cobranças do próprio Márcio.
 -- Ofertas: site, hospedagem, redes, sdr, simplestv, blog, sistema, manutencao.
--- Rodar quantas vezes quiser: recria a tabela.
+-- Rodar quantas vezes quiser: esvazia e preenche a tabela de novo.
 
-DROP TABLE IF EXISTS receita.clientes_weap;
-CREATE TABLE receita.clientes_weap (
+CREATE TABLE IF NOT EXISTS receita.clientes_weap (
   nome         text NOT NULL,
   cnpj         text,              -- 14 dígitos; NULL = procurar pela razão social
   busca_nome   text,              -- trecho da razão social p/ achar o CNPJ
@@ -13,6 +12,7 @@ CREATE TABLE receita.clientes_weap (
   valor_cents  int,               -- valor de referência (mensal ou da venda)
   ativo        boolean NOT NULL DEFAULT true
 );
+TRUNCATE receita.clientes_weap;
 
 INSERT INTO receita.clientes_weap (nome, cnpj, busca_nome, ofertas, valor_cents, ativo) VALUES
  ('Frigorífico Origem',        '05342368000151', NULL, '{site,hospedagem}',            39970, true),

@@ -13,25 +13,39 @@ services:
       - dados:/var/lib/postgresql/data
       - ./banco/01-estrutura.sql:/docker-entrypoint-initdb.d/01-estrutura.sql:ro
 
-  app:
-    build: ./app
+  # CRM (FastAPI + React) em leads.weap.com.br. Código em ./crm. A tela PHP antiga (./app) saiu do ar.
+  api:
+    build:
+      context: ./crm
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     depends_on: [db]
+    command: ["bash", "-c", "alembic upgrade head && python app/initial_data.py && fastapi run --workers 2 app/main.py"]
     environment:
-      DB_HOST: db
-      DB_NAME: leads
-      DB_USER: leads
-      DB_PASSWORD: ${DB_PASSWORD}
-      AGENTE_DB_HOST: ${AGENTE_DB_HOST:-}
-      AGENTE_DB_PORT: ${AGENTE_DB_PORT:-5432}
-      AGENTE_DB_NAME: ${AGENTE_DB_NAME:-weap_sdr}
-      AGENTE_DB_USER: ${AGENTE_DB_USER:-}
-      AGENTE_DB_PASSWORD: ${AGENTE_DB_PASSWORD:-}
+      PROJECT_NAME: Weap Leads
+      ENVIRONMENT: production
+      FRONTEND_HOST: https://${DOMINIO:-leads.weap.com.br}
+      SECRET_KEY: ${CRM_SECRET_KEY:?Falta CRM_SECRET_KEY no .env}
+      FIRST_SUPERUSER: ${CRM_ADMIN_EMAIL:?Falta CRM_ADMIN_EMAIL no .env}
+      FIRST_SUPERUSER_PASSWORD: ${CRM_ADMIN_SENHA:?Falta CRM_ADMIN_SENHA no .env}
+      POSTGRES_SERVER: db
+      POSTGRES_DB: leads
+      POSTGRES_USER: leads
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      AGENTE_DB_URL: ${AGENTE_DB_URL:-}
+
+  web:
+    build:
+      context: ./crm
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
 
   caddy:
     image: caddy:2
     restart: unless-stopped
-    depends_on: [app]
+    depends_on: [api, web]
     ports: ["80:80", "443:443"]
     environment:
       DOMINIO: ${DOMINIO:-leads.weap.com.br}

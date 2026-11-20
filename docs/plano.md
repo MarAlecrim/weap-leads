@@ -14,6 +14,10 @@ O leads.weap.com.br vira o mini CRM da Weap: dá nota aos leads aprendendo com q
 
 Decisor por regra: 1 sócio = ele; vários = sócio-administrador; senão "confirmar na conversa".
 
+## Stack
+
+CRM novo em Python FastAPI (backend) + React (frontend), a partir do modelo do leads-filter-fullstack, em `leads/crm/`. Ele substitui a tela PHP no mesmo endereço leads.weap.com.br (decisão do Gab, 20/11/2026: uma interface só).
+
 ## Fases
 
 0. Fechar o que está no ar (Gab).

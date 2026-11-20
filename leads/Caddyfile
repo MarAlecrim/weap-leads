@@ -6,5 +6,10 @@
 		X-Frame-Options DENY
 		Referrer-Policy same-origin
 	}
-	reverse_proxy app:80
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:80
+	}
 }
