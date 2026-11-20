@@ -1,0 +1,8 @@
+ALTER TABLE sdr_leads ADD COLUMN IF NOT EXISTS chamado_em timestamptz;
+INSERT INTO sdr_config (chave, valor, descricao) VALUES
+ ('espera_especialista_min', '10', 'Minutos que a IA espera o especialista chamar o lead antes de reassumir e oferecer horários')
+ON CONFLICT (chave) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION sdr_em_conversa(s text) RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
+  SELECT s IN ('respondeu','interessado','agendamento_pendente','agendado','humano','sem_interesse','bot')
+$$;

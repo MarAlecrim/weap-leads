@@ -1,0 +1,201 @@
+{
+  "name": "04 - Importa planilha para o banco do agente",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cf30b38f-3384-5a77-b768-d993f801cd6a",
+      "name": "Executar",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "instancia",
+              "value": "PREENCHER_NOME_DA_INSTANCIA",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "46e25c23-cfb4-5b13-a650-f6b2e349c3b7",
+      "name": "Qual número disparou",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI",
+          "mode": "list",
+          "cachedResultName": "Weap - 8220 - Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 9185745,
+          "mode": "list",
+          "cachedResultName": "Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit#gid=9185745"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        400,
+        0
+      ],
+      "id": "8719f248-dc4e-5206-8337-62f955ba8564",
+      "name": "Lê planilha",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G2f6H8wQUlAGG4et",
+          "name": "Google Sheet - MercadoNet-HTZ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f1",
+              "leftValue": "={{ String($json.disparo || '').toLowerCase() === 'sim' || String($json.mensagem || '').trim() !== '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "41a7effb-a850-57fe-9754-af68d5679d9d",
+      "name": "Só quem já recebeu",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH up AS (\n  INSERT INTO sdr_leads (chave, telefone, instancia, nome_empresa, especialidades, nicho, planilha, status,\n                         primeira_mensagem, ultima_mensagem_enviada, contatos_enviados, ultimo_contato_em)\n  SELECT sdr_chave($1), $1, nullif($2, ''), nullif($3, ''), nullif($4, ''), sdr_nicho($4), nullif($5, ''), 'contatado',\n         nullif($6, ''), nullif($6, ''), 1, now()\n   WHERE sdr_chave($1) IS NOT NULL\n  ON CONFLICT (chave) DO NOTHING\n  RETURNING id\n)\nINSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto)\nSELECT id, nullif($2, ''), 'out', 'disparo', $6 FROM up WHERE $6 <> ''\nRETURNING lead_id;",
+        "options": {
+          "queryReplacement": "={{ [ String($json.telefone || ''), String($('Qual número disparou').first().json.instancia || ''), String($json.nome_empresa || ''), String($json.especialidades || ''), (() => { try { return String($('Lê planilha').params.sheetName.cachedResultName || ''); } catch (e) { return ''; } })(), String($json.mensagem || '') ] }}"
+        }
+      },
+      "id": "1b4150bf-96b9-5c7c-9412-31f227d880ae",
+      "name": "Grava no banco",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        800,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Importa leads já contatados\nRode uma vez para cada planilha que já foi disparada.\n1. Em **Qual número disparou**, coloque o nome da instância da Evolution que fez o disparo dessa planilha.\n2. Em **Lê planilha**, escolha a planilha e a aba.\n3. Clique em Executar.\n\nQuem já está no banco não é duplicado.",
+        "height": 260,
+        "width": 460,
+        "color": 4
+      },
+      "id": "d7f061a5-5a86-57c3-9e21-0077b0a04774",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -320
+      ]
+    }
+  ],
+  "connections": {
+    "Executar": {
+      "main": [
+        [
+          {
+            "node": "Qual número disparou",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qual número disparou": {
+      "main": [
+        [
+          {
+            "node": "Lê planilha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lê planilha": {
+      "main": [
+        [
+          {
+            "node": "Só quem já recebeu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Só quem já recebeu": {
+      "main": [
+        [
+          {
+            "node": "Grava no banco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -1,0 +1,58 @@
+# Weap Leads (servidor leads01). Subir: docker compose up -d --build
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leads
+      POSTGRES_USER: leads
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "work_mem=32MB", "-c", "maintenance_work_mem=512MB", "-c", "max_wal_size=1GB", "-c", "wal_level=minimal", "-c", "max_wal_senders=0"]
+    volumes:
+      - dados:/var/lib/postgresql/data
+      - ./banco/01-estrutura.sql:/docker-entrypoint-initdb.d/01-estrutura.sql:ro
+
+  app:
+    build: ./app
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      DB_HOST: db
+      DB_NAME: leads
+      DB_USER: leads
+      DB_PASSWORD: ${DB_PASSWORD}
+      AGENTE_DB_HOST: ${AGENTE_DB_HOST:-}
+      AGENTE_DB_PORT: ${AGENTE_DB_PORT:-5432}
+      AGENTE_DB_NAME: ${AGENTE_DB_NAME:-weap_sdr}
+      AGENTE_DB_USER: ${AGENTE_DB_USER:-}
+      AGENTE_DB_PASSWORD: ${AGENTE_DB_PASSWORD:-}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMINIO: ${DOMINIO:-leads.weap.com.br}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+
+  importador:
+    build: ./importador
+    profiles: ["importar"]          # só roda quando chamado (cron mensal)
+    depends_on: [db]
+    environment:
+      PGHOST: db
+      PGDATABASE: leads
+      PGUSER: leads
+      PGPASSWORD: ${DB_PASSWORD}
+      RECEITA_UFS: ${RECEITA_UFS:-PR,SP}
+      RECEITA_PASTA: /baixados
+    volumes:
+      - baixados:/baixados
+
+volumes:
+  dados:
+  caddy:
+  baixados:

@@ -1,0 +1,96 @@
+// Confere a resposta da IA, aplica as regras e monta o que será enviado.
+const ctx = $('Monta contexto').first().json;
+const prep = $('Prepara prompt').first().json;
+const cfg = ctx.cfg || {};
+const conf = ctx.conf || {};
+const lead = ctx.lead || {};
+let r = $json.message && $json.message.content;
+if (typeof r === 'string') { try { r = JSON.parse(r.replace(/^```(json)?|```$/g, '').trim()); } catch (e) { r = {}; } }
+r = r || {};
+
+const acoes = ['nenhuma','propor_horarios','chamar_especialista','agendar','passar_humano','opt_out','automatica','bot'];
+const statusOk = ['respondeu','interessado','agendamento_pendente','agendado','sem_interesse','humano'];
+let acao = acoes.includes(r.acao) ? r.acao : 'nenhuma';
+let resposta = String(r.resposta || '').trim();
+let status = statusOk.includes(r.status) ? r.status : (lead.status === 'contatado' || lead.status === 'novo' ? 'respondeu' : lead.status);
+let slot = null;
+
+// Proteções contra robôs (independentes da IA)
+const hist = Array.isArray(ctx.historico) ? ctx.historico : [];
+let ultimoOut = -1;
+hist.forEach((m, i) => { if (m.autor !== 'lead') ultimoOut = i; });
+const novas = hist.slice(ultimoOut + 1).filter(m => m.autor === 'lead').map(m => String(m.texto || '').trim().toLowerCase());
+const anteriores = hist.slice(0, ultimoOut + 1).filter(m => m.autor === 'lead').map(m => String(m.texto || '').trim().toLowerCase());
+const repetida = novas.length > 0 && novas.every(t => t.length > 15 && anteriores.includes(t));
+const respostasIa = hist.filter(m => m.autor === 'ia').length;
+const jaConversou = hist.some(m => m.autor === 'ia' || m.autor === 'humano');
+if (repetida) acao = 'bot';                       // mesma mensagem longa repetida = robô
+if (respostasIa >= 25 && acao !== 'bot') acao = 'passar_humano'; // conversa longa demais: chama uma pessoa
+
+if (acao === 'agendar') {
+  const alvo = DateTime.fromISO(String(r.horario_inicio || ''));
+  slot = prep.slots.find(s => s.inicio === r.horario_inicio) ||
+         (alvo.isValid ? prep.slots.find(s => DateTime.fromISO(s.inicio).toMillis() === alvo.toMillis()) : null);
+  if (!slot) {
+    acao = prep.slots.length ? 'propor_horarios' : 'passar_humano';
+    status = prep.slots.length ? 'interessado' : 'humano';
+  }
+}
+let criar_evento = false;
+if (acao === 'agendar') {
+  if (cfg.modo_agenda === 'automatico') { criar_evento = true; status = 'agendado'; }
+  else { acao = 'pre_agendar'; status = 'agendamento_pendente'; }
+}
+if (acao === 'opt_out') status = 'sem_interesse';
+if (acao === 'automatica') { resposta = ''; status = jaConversou ? lead.status : 'contatado'; }
+if (acao === 'bot') { resposta = ''; status = 'bot'; }
+if (acao === 'passar_humano' || acao === 'chamar_especialista') status = 'humano';
+
+const midias = Array.isArray(ctx.midias) ? ctx.midias : [];
+const midia = (r.midia_id != null && resposta) ? (midias.find(m => String(m.id) === String(r.midia_id)) || null) : null;
+
+const token = (lead.token && String(lead.token).length >= 20) ? lead.token
+  : Array.from({ length: 32 }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 32)]).join('');
+
+const base = String(conf.webhook_base || '').replace(/\/$/, '');
+const linkConfirmar = `${base}/weap-agente-acao?a=confirmar&l=${lead.id}&t=${token}`;
+const linkRetomar = `${base}/weap-agente-acao?a=retomar&l=${lead.id}&t=${token}`;
+const quem = `${lead.nome_empresa || lead.nome_contato || 'Lead'}${lead.nicho && lead.nicho !== 'geral' ? ' (' + lead.nicho + ')' : ''}`;
+const wa = `https://wa.me/${lead.whatsapp || ''}`;
+const resumo = String(r.resumo || lead.resumo || '').trim();
+
+let aviso = '';
+if (acao === 'pre_agendar') {
+  aviso = `📅 ${quem} quer conversar ${slot.rotulo}.\nResumo: ${resumo}\nConversa: ${wa} (número ${lead.instancia})\n\nPara CONFIRMAR e já avisar o lead: ${linkConfirmar}\n\nSe não puder nesse horário, responda o lead direto no WhatsApp. A IA para de responder esse contato sozinha.`;
+} else if (acao === 'chamar_especialista') {
+  aviso = `🔥 CHAME AGORA: ${quem} aceitou falar com você agora pelo WhatsApp.\nO que precisa: ${r.aviso_responsavel || resumo}\nConversa: ${wa} (número ${lead.instancia})\n\nA IA parou de responder esse contato. Se não puder chamar, para a IA voltar e oferecer horários: ${linkRetomar}`;
+} else if (acao === 'passar_humano') {
+  aviso = `🙋 ${quem} precisa de você: ${r.aviso_responsavel || resumo}\nConversa: ${wa} (número ${lead.instancia})\nA IA parou de responder esse contato. Para reativar: ${linkRetomar}`;
+} else if (status === 'interessado' && lead.status !== 'interessado') {
+  aviso = `🔥 Lead interessado: ${quem}\nResumo: ${resumo}\nConversa: ${wa} (número ${lead.instancia})`;
+}
+
+return [{ json: {
+  lead_id: lead.id,
+  instancia: lead.instancia,
+  numero: lead.whatsapp,
+  resposta,
+  acao,
+  status,
+  resumo,
+  criar_evento,
+  inicio: slot ? slot.inicio : '',
+  fim: slot ? DateTime.fromISO(slot.inicio, { setZone: true }).plus({ minutes: (cfg.horarios && cfg.horarios.duracao) || 30 }).toISO({ suppressMilliseconds: true }) : '',
+  rotulo: slot ? slot.rotulo : '',
+  agenda_id: cfg.agenda_id || '',
+  token,
+  opt_out: acao === 'opt_out' || acao === 'bot',
+  pausar: acao === 'passar_humano' || acao === 'chamar_especialista',
+  midia,
+  aviso,
+  responsavel_whatsapp: cfg.responsavel_whatsapp || '',
+  instancia_avisos: conf.instancia_avisos || '',
+  evolution_url: String(conf.evolution_url || '').replace(/\/$/, ''),
+  empresa: lead.nome_empresa || lead.nome_contato || 'Lead',
+  responsavel_nome: cfg.responsavel_nome || 'WEAP',
+}}];

@@ -1,0 +1,1305 @@
+{
+  "name": "02 - SDR Fabiano WEAP",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "de08f3a9-dde8-42c0-bdd4-182a3029f81e",
+              "leftValue": "={{ $json.mensagem }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "269f60f9-f01b-4985-ae8d-377bce7f1996",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": "={{ $node[\"Loop Over Items\"].context[\"done\"]}}"
+        }
+      },
+      "id": "8a650e22-2c70-4ba5-89a5-32c604400354",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        368,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1cba9986-342d-4bdf-b4af-94b56de82b6b",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "2c1e833d-b3a1-47fb-9c43-9635ddb17d90",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "www.instagram.com",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "57a4c36c-ce81-449f-bae2-1c0244739a89",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "https://wa.me/",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "81ebc81e-69c1-4f10-b91d-7aacfe5a6f49",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        1136
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://r.jina.ai/{{ $node[\"Loop Over Items\"].json[\"website\"] }}",
+        "options": {}
+      },
+      "id": "e85c4094-8072-4b48-af83-ea0f75bcf744",
+      "name": "Jina AI - Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        992
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"server_url\"] }}/message/sendText/{{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"instancia\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"api_key\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Loop Over Items').item.json.telefone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $item(0).$node[\"Loop Over Items1\"].json[\"message\"] ?? (Number($('Checa lead no banco').first().json.contatos || 0) > 0 ? 'Oi, tudo bem? Aqui é o ' + ($('Checa lead no banco').first().json.responsavel || 'Fabiano') + ', da Weap. Te mandei uma mensagem esses dias e queria saber se você chegou a ver. Se não for o momento, sem problema nenhum.' : 'Olá! Aqui é o ' + ($('Checa lead no banco').first().json.responsavel || 'Fabiano') + ', da Weap. Ajudamos empresas a conquistar mais clientes com soluções digitais sob medida. Faz sentido conversarmos rapidinho?') }}\n"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "5f3489dc-be60-42ed-bab0-6f78374244dd",
+      "name": "Envia MSG Texto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "content",
+        "options": {}
+      },
+      "id": "757e7cdc-019e-4c78-afb1-3022804fa1e1",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {
+          "reset": "={{ $node[\"Loop Over Items1\"].context[\"done\"]}}"
+        }
+      },
+      "id": "e95f55cf-9ff8-4cc7-95f4-b1a9136b5301",
+      "name": "Loop Over Items1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2144,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "2ffd7400-8abd-4acc-bcd8-37c8aab1e3b2",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2592,
+        1088
+      ],
+      "webhookId": "a1c02d67-3c79-455f-8e11-f499f9b5ca5b"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": 2
+      },
+      "id": "1fdf78fe-2257-415f-b135-983ec6f0599a",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        160,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bc2a1451-2a6d-450e-8adf-b4fc1fd342d7",
+              "name": "server_url",
+              "value": "https://zap7.mercadonet.com.br",
+              "type": "string"
+            },
+            {
+              "id": "31ef30af-2137-4896-b7ca-99e154646676",
+              "name": "instancia",
+              "value": "Weap-Fabiano-7187",
+              "type": "string"
+            },
+            {
+              "id": "3bf78965-9d9f-4710-8822-42b592d1533d",
+              "name": "api_key",
+              "value": "COLOQUE_A_CHAVE_NO_N8N",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e9280ef3-109a-4def-86ba-87ca951f0329",
+      "name": "Dados_Evolution",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -96,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6d1d590b-c9a3-480c-bc1f-705278d96300",
+              "name": "content",
+              "value": "={{ $json.message.content.messages }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0233ad51-dd17-427f-8a9e-30e7985180b7",
+      "name": "PegaMensagem",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# DISPARO PARA LEADS GOOGLE MAPS",
+        "height": 80,
+        "width": 700,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1280,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "69649202-a3b3-4b4a-932d-ea6272ec7694",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# Filtra e junta os dados",
+        "height": 600,
+        "width": 840
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -304,
+        704
+      ],
+      "typeVersion": 1,
+      "id": "a5c0fd3a-845c-48db-9fe5-c681b330a900",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Alterar aqui",
+        "height": 260,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        832
+      ],
+      "typeVersion": 1,
+      "id": "c7443154-1d0b-4e05-9a00-fdac68616bf1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Busca informações no site e prepara uma mensagem",
+        "height": 460,
+        "width": 1180,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        848
+      ],
+      "typeVersion": 1,
+      "id": "c588feeb-87f7-4d14-b9dd-3799381d87bc",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "# Dispara mensagens uma a uma",
+        "height": 540,
+        "width": 1000,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1760,
+        768
+      ],
+      "typeVersion": 1,
+      "id": "032b97dd-7d38-4bd2-8e23-b1f6c9254daa",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Alterar aqui",
+        "height": 360,
+        "width": 560,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "0aa87b69-0d42-42a0-a676-d84931f7ffd6",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI",
+          "mode": "list",
+          "cachedResultName": "Weap - 8220 - Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 9185745,
+          "mode": "list",
+          "cachedResultName": "Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit#gid=9185745"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $item(\"0\").$node[\"Loop Over Items\"].json[\"telefone\"] }}",
+            "mensagem": "={{ $item(\"0\").$node[\"Message a model\"].json[\"message\"][\"content\"][\"messages\"].map(m => m.message).join(\" \") }}{{ $json.message.conversation }}",
+            "disparo": "sim"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "nome_empresa",
+              "displayName": "nome_empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "endereco",
+              "displayName": "endereco",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reviews",
+              "displayName": "reviews",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "especialidades",
+              "displayName": "especialidades",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "disparo",
+              "displayName": "disparo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e432ea2a-4c7f-4709-8bed-2249a8e15692",
+      "name": "Atualiza planilha para sim",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2384,
+        864
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G2f6H8wQUlAGG4et",
+          "name": "Google Sheet - MercadoNet-HTZ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "1/15 7-19 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        1056
+      ],
+      "id": "901ea46e-47ec-433e-a96d-a90c2f597258",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8ef42ffb-0574-4939-9ba4-1c43dea0f20e",
+              "leftValue": "={{ $json.mensagem }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        1056
+      ],
+      "id": "997c4de1-2d05-4200-965e-1a59d0969bcf",
+      "name": "If1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        864
+      ],
+      "id": "c802d37e-5a63-44f8-9b89-ca847faf8d01",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1872,
+        1088
+      ],
+      "id": "0666c284-df57-45b9-984e-0a8c1df2e991",
+      "name": "Wait2",
+      "webhookId": "00259dbb-7a08-4f67-b218-b7d9f6c39035"
+    },
+    {
+      "parameters": {
+        "content": "# Captura dados ",
+        "height": 520,
+        "width": 960,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1280,
+        704
+      ],
+      "typeVersion": 1,
+      "id": "28b205ab-8b55-46d9-9623-faca96ea703e",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI",
+          "mode": "list",
+          "cachedResultName": "Weap - 8220 - Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 9185745,
+          "mode": "list",
+          "cachedResultName": "Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit#gid=9185745"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -944,
+        1056
+      ],
+      "id": "591bf409-e5db-43d2-9423-8b694edd8178",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G2f6H8wQUlAGG4et",
+          "name": "Google Sheet - MercadoNet-HTZ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Executa o código de geração do número aleatório\nconst min = 30;\nconst max = 60;\nconst randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;\n\n// Retorna o valor em um array de objetos com a propriedade \"json\"\nreturn [\n  {\n    json: {\n      randomNumber: randomNumber,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        816
+      ],
+      "id": "3e57c282-5782-4c10-a120-2169367e6a50",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini-2024-07-18",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI-2024-07-18"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=# PAPEL\n\nVocê é um copywriter sênior de marketing, com mais de 10 anos de experiência ajudando pequenas e médias empresas a serem encontradas e escolhidas por mais clientes. Escreve como pessoa, não como agência: simples, caloroso, direto e curioso sobre o negócio do outro.\n\n# CONTEXTO\n\nVocê escreve mensagens de WhatsApp em nome de um consultor especialista em marketing da WEAP. O nome dele vem no campo \"Quem escreve\". A WEAP ajuda empresas com sites, gestão de mídias sociais, tráfego pago e manual de marca (identidade visual).\n\nOs leads vêm do Google Maps. Você pode dizer que encontrou a empresa no Google Maps, porque é verdade.\n\n# QUAL MENSAGEM ESCREVER\n\nOlhe o campo \"Mensagens já enviadas a este lead\":\n- 0: é o PRIMEIRO CONTATO. Siga a seção PRIMEIRO CONTATO.\n- 1 ou mais: é um RECONTATO. A pessoa já recebeu mensagem antes e não respondeu. Siga a seção RECONTATO.\n\n# DADOS DE ENTRADA\n\nVocê receberá estes campos no \"user\":\n- Quem escreve (nome do consultor)\n- Mensagens já enviadas a este lead (número)\n- Primeira mensagem enviada (pode vir vazia)\n- Nome da empresa\n- Scraper do site da empresa (texto bruto, pode vir vazio, com erro ou com ruído como menus e avisos de cookies)\n- Rating no Google\n- Reviews no Google\n- Especialidades (categorias do Google Maps, que indicam o segmento)\n\nUse SOMENTE o que foi fornecido. Nunca invente cidade, história, serviços, prêmios, tempo de mercado, nome do dono, data de contato anterior ou qualquer outro fato.\n\n# REGRAS PARA DADOS AUSENTES\n\n- Segmento: deduza das Especialidades e, se houver, do conteúdo do site.\n- Se o scraper trouxer algo específico e útil (serviço, especialidade, diferencial, história), pode usar. Ignore menus, avisos de cookies, textos de erro e trechos soltos.\n- Se o scraper vier vazio, com erro ou sem informação útil: não diga que viu o site e NÃO afirme que a empresa não tem site.\n- Nunca preencha uma lacuna com suposição. Uma mensagem simples e honesta é melhor que uma específica e falsa.\n\n# REGRA DE RATING\n\n- Rating de 4,0 ou mais, com avaliações informadas: pode reconhecer a reputação como base sólida, citando a nota ou o número de avaliações uma vez, de forma natural.\n- Rating abaixo de 4,0 ou ausente: NÃO mencione nota nem avaliações, de nenhuma forma.\n\n# PRIMEIRO CONTATO (2 MENSAGENS)\n\nAs 2 mensagens são enviadas uma logo após a outra e lidas como uma única conversa. Cada uma tem de 20 a 35 palavras.\n\nObjetivo: abrir uma conversa. Nada de venda direta. O destinatário deve sentir que um consultor olhou para o negócio dele e ficou curioso, e responder à pergunta final.\n\nMensagem 1: conexão\n- Cumprimento curto, quem é o consultor (nome + consultor de marketing), que encontrou a empresa no Google Maps e o elemento específico que chamou atenção.\n- Sem pergunta.\n\nMensagem 2: contexto + pergunta\n- Conecte o ponto forte do negócio (reputação, especialidade ou serviço) a uma oportunidade de marketing do segmento, escolhendo UMA ou no máximo DUAS frentes entre site, gestão de mídias, tráfego pago e manual de marca/identidade visual. Nunca liste as quatro.\n- Termine com UMA pergunta aberta e leve sobre como o negócio atrai clientes ou o que quer para a marca. Não pergunte se a pessoa quer um orçamento, material ou reunião.\n\nExemplo (empresa fictícia, não copie as frases):\nEntrada: Quem escreve: Fabiano | Mensagens já enviadas: 0 | Clínica Bella Pele | rating 4,8 | 210 avaliações | Clínica de estética | site fala de tratamentos faciais personalizados\n{\"messages\":[{\"part\":1,\"message\":\"Oi, tudo bem? Aqui é o Fabiano, consultor de marketing. Encontrei a Clínica Bella Pele no Google Maps e gostei da proposta de tratamentos faciais personalizados.\"},{\"part\":2,\"message\":\"Com nota 4,8 e mais de 200 avaliações, a reputação já está construída. Ajudo negócios assim a serem encontrados por mais gente certa. Hoje, como os novos clientes chegam até vocês? 🙂\"}]}\n\n# RECONTATO (1 MENSAGEM)\n\nNão presuma o motivo do silêncio: a pessoa pode não ter visto, ter esquecido, estar sem tempo ou ainda estar pensando.\n\nObjetivo: retomar a conversa de forma leve. Perguntar, de um jeito natural, se a pessoa chegou a ver a mensagem anterior, o que achou ou se pensou em algo. A pessoa deve sentir que é fácil responder, inclusive com um \"não tenho interesse agora\".\n\nEscreva UMA mensagem, de 20 a 40 palavras:\n- Cumprimento curto e lembrete de quem é (\"aqui é o [nome], da WEAP\").\n- Referência leve à mensagem anterior, citando o nome da empresa ou o segmento. Se a \"Primeira mensagem enviada\" vier preenchida, retome o mesmo assunto, sem repetir as frases dela. Se vier vazia, fale de forma genérica (\"te mandei uma mensagem esses dias\").\n- UMA pergunta só, fácil de responder.\n- Se \"Mensagens já enviadas\" for 2 ou mais, esta é a última tentativa: deixe claro, com gentileza, que não vai mais incomodar e que fica à disposição.\n- Não repita a apresentação completa do primeiro contato.\n- Proibido cobrar ou culpar: nada de \"não tive retorno\", \"estou aguardando\", \"você não respondeu\", \"sumiu\".\n\nExemplo (empresa fictícia, não copie as frases):\nEntrada: Quem escreve: Fabiano | Mensagens já enviadas: 1 | Studio Aurora | Escritório de arquitetura | Primeira mensagem: perguntou de onde vêm os projetos\n{\"messages\":[{\"part\":1,\"message\":\"Olá! Aqui é o Fabiano, da WEAP. Mandei uma mensagem para o Studio Aurora há alguns dias, sobre de onde vêm os novos projetos. Você teve a chance de ler? Se não for o momento, sem problema nenhum.\"}]}\n\n# ESTILO (VALE PARA OS DOIS)\n\n- Português do Brasil, conversacional, frases curtas, sem jargão de marketing (evite \"funil\", \"ROI\", \"branding estratégico\" e similares).\n- Tom de consultor curioso, de igual para igual.\n- Emojis: no máximo 2 no primeiro contato e 1 no recontato, nunca no início de frase. Zero é uma boa opção.\n- Texto simples, sem negrito, listas ou links.\n- Varie a abertura. Não comece sempre com \"Olá, [Empresa]!\".\n\n# PROIBIDO (VALE PARA OS DOIS)\n\n- Urgência, escassez ou pressão de qualquer tipo.\n- Promessas de resultado (aumentar vendas, dobrar clientes, primeiro lugar no Google).\n- Críticas diretas ou veladas ao site, às redes ou à identidade visual atual da empresa.\n- Mais de uma pergunta na mesma mensagem.\n- Preço, proposta, portfólio, convite para reunião ou ligação.\n- Elogio genérico que serviria para qualquer empresa.\n- Qualquer coisa que pareça spam, mensagem em massa ou template.\n\n# CHECAGEM FINAL\n\nAntes de responder, confira internamente e reescreva se algo falhar:\n- Escolhi o modo certo pelo número de mensagens já enviadas?\n- Primeiro contato: exatamente 2 mensagens de 20 a 35 palavras. Recontato: exatamente 1 mensagem de 20 a 40 palavras.\n- Usei o nome de \"Quem escreve\"?\n- Todo fato citado está nos dados de entrada?\n- Há UMA pergunta só, no lugar certo?\n- Nenhuma crítica, cobrança ou promessa de resultado?\n- Rating só aparece se for 4,0 ou mais?\n- Soa como uma pessoa escrevendo para outra?\n\n# FORMATO DE SAÍDA\n\nResponda APENAS com um objeto JSON válido, neste formato exato (a chave \"messages\" e as chaves \"part\" e \"message\" são obrigatórias). Sem texto antes ou depois, sem blocos de código, sem comentários. Escape corretamente aspas dentro das mensagens.\n\nPrimeiro contato: {\"messages\":[{\"part\":1,\"message\":\"...\"},{\"part\":2,\"message\":\"...\"}]}\nRecontato: {\"messages\":[{\"part\":1,\"message\":\"...\"}]}\n",
+              "role": "system"
+            },
+            {
+              "content": "=Quem escreve: {{ $('Checa lead no banco').first().json.responsavel || 'Fabiano' }}\nMensagens já enviadas a este lead: {{ Math.max(Number($('Checa lead no banco').first().json.contatos || 0), $('Loop Over Items').first().json.primeiro_contato ? 1 : 0) }}\nPrimeira mensagem enviada: {{ $('Checa lead no banco').first().json.primeira_mensagem || $('Loop Over Items').first().json.primeiro_contato || '' }}\nNome da empresa: {{ $('Loop Over Items').first().json.nome_empresa }}\nScraper do site da empresa: {{ $json.data }}\nRating no Google: {{ $('Loop Over Items').first().json.rating }}\nReviews no Google: {{ $('Loop Over Items').first().json.reviews }}\nEspecialidades: {{ $('Loop Over Items').first().json.especialidades }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "id": "56ca6d16-baa8-417c-bcc7-2ec5c2dd15f4",
+      "name": "Message a model",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.6,
+      "position": [
+        1072,
+        1104
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "6s6eu25QvLJxlLBX",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT coalesce(bool_or(l.opt_out OR sdr_em_conversa(l.status)), false) AS pular,\n       max(CASE WHEN l.status = 'bot' THEN 'número é robô ou atendimento automático'\n                WHEN l.opt_out THEN 'pediu para não receber'\n                WHEN sdr_em_conversa(l.status) THEN 'já está conversando (' || l.status || ')' END) AS motivo,\n       coalesce(max(l.contatos_enviados), 0) AS contatos,\n       max(l.primeira_mensagem) AS primeira_mensagem,\n       (SELECT responsavel_nome FROM sdr_instancias WHERE instancia = $2) AS responsavel\n  FROM sdr_leads l\n WHERE l.chave = sdr_chave($1);",
+        "options": {
+          "queryReplacement": "={{ [ String($('Loop Over Items').first().json.telefone || ''), String($('Dados_Evolution').first().json.instancia || '') ] }}"
+        }
+      },
+      "id": "c3207edf-6c27-583d-9272-1be8c44a7f65",
+      "name": "Checa lead no banco",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        368,
+        1300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4181ea9c-2d32-53ba-9949-d6c299335434",
+              "leftValue": "={{ $json.pular === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "4673ed67-5dff-5cb1-b2ef-167d59118d7b",
+      "name": "Pular lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI",
+          "mode": "list",
+          "cachedResultName": "Weap - 8220 - Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 9185745,
+          "mode": "list",
+          "cachedResultName": "Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit#gid=9185745"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $('Loop Over Items').first().json.telefone }}",
+            "mensagem": "=NÃO ENVIADO: {{ $json.motivo }}",
+            "disparo": "pulado"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "nome_empresa",
+              "displayName": "nome_empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "endereco",
+              "displayName": "endereco",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reviews",
+              "displayName": "reviews",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "especialidades",
+              "displayName": "especialidades",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "disparo",
+              "displayName": "disparo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "283ff9d0-6c8f-5287-8493-1b3961b847ab",
+      "name": "Marca como pulado na planilha",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        780,
+        1460
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G2f6H8wQUlAGG4et",
+          "name": "Google Sheet - MercadoNet-HTZ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Devolve os dados da planilha para o resto do fluxo seguir igual\nreturn [{ json: $('Loop Over Items').first().json }];"
+      },
+      "id": "f992bee2-4aa1-5e75-80fc-3fc0c6db9eeb",
+      "name": "Volta dados do lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH up AS (\n  INSERT INTO sdr_leads (chave, telefone, instancia, nome_empresa, especialidades, nicho, planilha, status,\n                         primeira_mensagem, ultima_mensagem_enviada, contatos_enviados, ultimo_contato_em)\n  SELECT sdr_chave($1), $1, $2, nullif($3, ''), nullif($4, ''), sdr_nicho($4), nullif($5, ''), 'contatado', $6, $6, 1, now()\n   WHERE sdr_chave($1) IS NOT NULL\n  ON CONFLICT (chave) DO UPDATE SET\n     instancia = EXCLUDED.instancia,\n     nome_empresa = coalesce(sdr_leads.nome_empresa, EXCLUDED.nome_empresa),\n     especialidades = coalesce(sdr_leads.especialidades, EXCLUDED.especialidades),\n     nicho = CASE WHEN sdr_leads.nicho = 'geral' THEN EXCLUDED.nicho ELSE sdr_leads.nicho END,\n     planilha = coalesce(sdr_leads.planilha, EXCLUDED.planilha),\n     primeira_mensagem = coalesce(sdr_leads.primeira_mensagem, EXCLUDED.primeira_mensagem),\n     ultima_mensagem_enviada = EXCLUDED.ultima_mensagem_enviada,\n     contatos_enviados = sdr_leads.contatos_enviados + 1,\n     ultimo_contato_em = now(), atualizado_em = now()\n  RETURNING id, nicho\n),\nmsg AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto)\n  SELECT id, $2, 'out', 'disparo', $6 FROM up\n)\nSELECT up.id AS lead_id, m.id AS midia_id, m.tipo, m.url, m.legenda\n  FROM up\n  LEFT JOIN LATERAL (\n    SELECT * FROM sdr_midias\n     WHERE ativo AND usar_no_disparo AND nicho IN (up.nicho, 'geral')\n       AND (SELECT valor FROM sdr_config WHERE chave = 'midia_no_disparo') = 'sim'\n     ORDER BY (nicho = up.nicho) DESC, random() LIMIT 1\n  ) m ON true;",
+        "options": {
+          "queryReplacement": "={{ (() => { const l = $('Loop Over Items').first().json; let msg = ''; try { msg = $('Message a model').first().json.message.content.messages.map(m => m.message).join('\\n'); } catch (e) {} if (!msg) msg = $('Envia MSG Texto').first().json.message?.conversation || '[mensagem padrão do disparo]'; return [ String(l.telefone || ''), String($('Dados_Evolution').first().json.instancia || ''), String(l.nome_empresa || ''), String(l.especialidades || ''), (() => { try { return String($('Get row(s) in sheet').params.sheetName.cachedResultName || ''); } catch (e) { return ''; } })(), msg ]; })() }}"
+        }
+      },
+      "id": "20f6c5b7-82d2-5eaa-aaa5-5e9738d0fc78",
+      "name": "Registra lead no banco",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2600,
+        864
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6c299231-f847-5ea8-98dc-98d07e1df623",
+              "leftValue": "={{ !!$json.url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "01317719-6f8d-5ab1-8243-921522f35d01",
+      "name": "Mandar mídia?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2800,
+        864
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Dados_Evolution').first().json.server_url }}/message/sendMedia/{{ $('Dados_Evolution').first().json.instancia }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Dados_Evolution').first().json.api_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: String($('Loop Over Items').first().json.telefone), mediatype: $json.tipo === 'video' ? 'video' : 'image', mimetype: $json.tipo === 'video' ? 'video/mp4' : ($json.url.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'), caption: $json.legenda || '', media: $json.url, fileName: $json.url.split('?')[0].split('/').pop() }) }}",
+        "options": {}
+      },
+      "id": "c28c945e-0c9e-5965-bbae-c68756aa0ac0",
+      "name": "Envia mídia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3000,
+        784
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## Ligação com o agente (banco Postgres)\n- **Checa lead no banco**: pula quem pediu para sair ou já está conversando e marca a linha como 'pulado'.\n- **Registra lead no banco**: guarda o lead e a mensagem enviada. O agente só responde quem está registrado.\n- **Envia mídia**: só manda se sdr_config.midia_no_disparo = 'sim' e houver mídia com usar_no_disparo.",
+        "height": 220,
+        "width": 520,
+        "color": 4
+      },
+      "id": "d933b46a-7dbd-53d8-a387-2a59921adb93",
+      "name": "Nota: banco",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        560
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Dados_Evolution",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Checa lead no banco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Jina AI - Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jina AI - Scraper": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia MSG Texto": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Atualiza planilha para sim",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envia MSG Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dados_Evolution": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PegaMensagem": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "PegaMensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checa lead no banco": {
+      "main": [
+        [
+          {
+            "node": "Pular lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pular lead?": {
+      "main": [
+        [
+          {
+            "node": "Marca como pulado na planilha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Volta dados do lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Volta dados do lead": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualiza planilha para sim": {
+      "main": [
+        [
+          {
+            "node": "Registra lead no banco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registra lead no banco": {
+      "main": [
+        [
+          {
+            "node": "Mandar mídia?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mandar mídia?": {
+      "main": [
+        [
+          {
+            "node": "Envia mídia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "56899680-d922-4b7f-b1f4-749a38efc392",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "658d5049499034b0bd56fdedd288954c83c5481d29a832b6234a2804adf411ab"
+  },
+  "nodeGroups": [],
+  "id": "i40w4b4dx6ju59d7",
+  "tags": []
+}

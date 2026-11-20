@@ -1,0 +1,3 @@
+COLE NO CAMPO "Value" do parâmetro "text" do node "Envia MSG Texto", em modo Expression, apagando o que tem:
+
+{{ $item(0).$node["Loop Over Items1"].json["message"] ?? (Number($('Checa lead no banco').first().json.contatos || 0) > 0 ? 'Oi, tudo bem? Aqui é o ' + ($('Checa lead no banco').first().json.responsavel || 'Fabiano') + ', da Weap. Te mandei uma mensagem esses dias e queria saber se você chegou a ver. Se não for o momento, sem problema nenhum.' : 'Olá! Aqui é o ' + ($('Checa lead no banco').first().json.responsavel || 'Fabiano') + ', da Weap. Ajudamos empresas a conquistar mais clientes com soluções digitais sob medida. Faz sentido conversarmos rapidinho?') }}

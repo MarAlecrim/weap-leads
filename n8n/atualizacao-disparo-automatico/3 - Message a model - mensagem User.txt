@@ -1,0 +1,8 @@
+Quem escreve: {{ $('Checa lead no banco').first().json.responsavel || 'Fabiano' }}
+Mensagens já enviadas a este lead: {{ Math.max(Number($('Checa lead no banco').first().json.contatos || 0), $('Loop Over Items').first().json.primeiro_contato ? 1 : 0) }}
+Primeira mensagem enviada: {{ $('Checa lead no banco').first().json.primeira_mensagem || $('Loop Over Items').first().json.primeiro_contato || '' }}
+Nome da empresa: {{ $('Loop Over Items').first().json.nome_empresa }}
+Scraper do site da empresa: {{ $json.data }}
+Rating no Google: {{ $('Loop Over Items').first().json.rating }}
+Reviews no Google: {{ $('Loop Over Items').first().json.reviews }}
+Especialidades: {{ $('Loop Over Items').first().json.especialidades }}

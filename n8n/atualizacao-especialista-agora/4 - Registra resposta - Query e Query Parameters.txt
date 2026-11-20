@@ -1,0 +1,29 @@
+COLE NO CAMPO "Query" DO NODE "Registra resposta" (apague o que tem e cole tudo abaixo até a linha de traços):
+
+WITH m1 AS (
+  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto)
+  SELECT $1::bigint, $2, 'out', 'ia', '[mídia ' || $3 || ' enviada]' WHERE $3 <> ''
+),
+m2 AS (
+  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, msg_id)
+  SELECT $1::bigint, $2, 'out', 'ia', $4, nullif($5, '') WHERE $4 <> ''
+)
+UPDATE sdr_leads
+   SET status = $6,
+       resumo = coalesce(nullif($7, ''), resumo),
+       opt_out = opt_out OR $8::boolean,
+       ia_pausada = ia_pausada OR $9::boolean,
+       horario_proposto = coalesce(nullif($10, '')::timestamptz, horario_proposto),
+       token = $11,
+       evento_id = coalesce(nullif($12, ''), evento_id),
+       link_reuniao = coalesce(nullif($13, ''), link_reuniao),
+       chamado_em = CASE WHEN $14::boolean THEN now() ELSE chamado_em END,
+       ultimo_contato_em = now(), atualizado_em = now()
+ WHERE id = $1::bigint
+RETURNING id, status;
+
+------------------------------------------------------------
+
+COLE NO CAMPO "Query Parameters" (em Options) DO MESMO NODE, apagando o que tem:
+
+{{ (() => { const v = $('Prepara envio').first().json; let id = ''; try { id = ($('Envia resposta').first().json.key || {}).id || ''; } catch (e) {} return [ String(v.lead_id), v.instancia || '', v.tem_midia ? '#' + v.midia.id + ' (' + v.midia.descricao + ')' : '', v.tem_texto ? v.resposta : '', id, v.status, v.resumo || '', String(!!v.opt_out), String(!!v.pausar), v.inicio || '', v.token, v.evento_id || '', v.link_reuniao || '', String(v.acao === 'chamar_especialista') ]; })() }}

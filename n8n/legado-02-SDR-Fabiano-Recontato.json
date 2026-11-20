@@ -1,0 +1,918 @@
+{
+  "name": "02 - SDR Fabiano WEAP",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "de08f3a9-dde8-42c0-bdd4-182a3029f81e",
+              "leftValue": "={{ $json.mensagem }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "269f60f9-f01b-4985-ae8d-377bce7f1996",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": "={{ $node[\"Loop Over Items\"].context[\"done\"]}}"
+        }
+      },
+      "id": "8a650e22-2c70-4ba5-89a5-32c604400354",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        368,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1cba9986-342d-4bdf-b4af-94b56de82b6b",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "2c1e833d-b3a1-47fb-9c43-9635ddb17d90",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "www.instagram.com",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            },
+            {
+              "id": "57a4c36c-ce81-449f-bae2-1c0244739a89",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "https://wa.me/",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "81ebc81e-69c1-4f10-b91d-7aacfe5a6f49",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        1136
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://r.jina.ai/{{ $node[\"Loop Over Items\"].json[\"website\"] }}",
+        "options": {}
+      },
+      "id": "e85c4094-8072-4b48-af83-ea0f75bcf744",
+      "name": "Jina AI - Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        992
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"server_url\"] }}/message/sendText/{{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"instancia\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"api_key\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Loop Over Items').item.json.telefone }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $item(0).$node[\"Loop Over Items1\"].json[\"message\"] ?? \"Oi, tudo bem? Aqui é o Fabiano, da Weap. Te mandei uma mensagem esses dias e queria saber se você chegou a ver. Se não for o momento, sem problema nenhum.\" }}\n"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "5f3489dc-be60-42ed-bab0-6f78374244dd",
+      "name": "Envia MSG Texto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "content",
+        "options": {}
+      },
+      "id": "757e7cdc-019e-4c78-afb1-3022804fa1e1",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {
+          "reset": "={{ $node[\"Loop Over Items1\"].context[\"done\"]}}"
+        }
+      },
+      "id": "e95f55cf-9ff8-4cc7-95f4-b1a9136b5301",
+      "name": "Loop Over Items1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2144,
+        1072
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "2ffd7400-8abd-4acc-bcd8-37c8aab1e3b2",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2592,
+        1088
+      ],
+      "webhookId": "a1c02d67-3c79-455f-8e11-f499f9b5ca5b"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": 2
+      },
+      "id": "1fdf78fe-2257-415f-b135-983ec6f0599a",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        160,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bc2a1451-2a6d-450e-8adf-b4fc1fd342d7",
+              "name": "server_url",
+              "value": "https://zap7.mercadonet.com.br",
+              "type": "string"
+            },
+            {
+              "id": "31ef30af-2137-4896-b7ca-99e154646676",
+              "name": "instancia",
+              "value": "Weap-Fabiano-7187",
+              "type": "string"
+            },
+            {
+              "id": "3bf78965-9d9f-4710-8822-42b592d1533d",
+              "name": "api_key",
+              "value": "COLOQUE_A_CHAVE_NO_N8N",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e9280ef3-109a-4def-86ba-87ca951f0329",
+      "name": "Dados_Evolution",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -96,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6d1d590b-c9a3-480c-bc1f-705278d96300",
+              "name": "content",
+              "value": "={{ $json.message.content.messages }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0233ad51-dd17-427f-8a9e-30e7985180b7",
+      "name": "PegaMensagem",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        1104
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# DISPARO PARA LEADS GOOGLE MAPS",
+        "height": 80,
+        "width": 700,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1280,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "69649202-a3b3-4b4a-932d-ea6272ec7694",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# Filtra e junta os dados",
+        "height": 600,
+        "width": 840
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -304,
+        704
+      ],
+      "typeVersion": 1,
+      "id": "a5c0fd3a-845c-48db-9fe5-c681b330a900",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Alterar aqui",
+        "height": 260,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -160,
+        832
+      ],
+      "typeVersion": 1,
+      "id": "c7443154-1d0b-4e05-9a00-fdac68616bf1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Busca informações no site e prepara uma mensagem",
+        "height": 460,
+        "width": 1180,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        848
+      ],
+      "typeVersion": 1,
+      "id": "c588feeb-87f7-4d14-b9dd-3799381d87bc",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "# Dispara mensagens uma a uma",
+        "height": 540,
+        "width": 1000,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1760,
+        768
+      ],
+      "typeVersion": 1,
+      "id": "032b97dd-7d38-4bd2-8e23-b1f6c9254daa",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Alterar aqui",
+        "height": 360,
+        "width": 560,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "0aa87b69-0d42-42a0-a676-d84931f7ffd6",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI",
+          "mode": "list",
+          "cachedResultName": "Weap - 8220 - Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 9185745,
+          "mode": "list",
+          "cachedResultName": "Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit#gid=9185745"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telefone": "={{ $item(\"0\").$node[\"Loop Over Items\"].json[\"telefone\"] }}",
+            "mensagem": "={{ $item(\"0\").$node[\"Message a model\"].json[\"message\"][\"content\"][\"messages\"].map(m => m.message).join(\" \") }}{{ $json.message.conversation }}",
+            "disparo": "sim"
+          },
+          "matchingColumns": [
+            "telefone"
+          ],
+          "schema": [
+            {
+              "id": "nome_empresa",
+              "displayName": "nome_empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "endereco",
+              "displayName": "endereco",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "website",
+              "displayName": "website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reviews",
+              "displayName": "reviews",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "especialidades",
+              "displayName": "especialidades",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "disparo",
+              "displayName": "disparo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e432ea2a-4c7f-4709-8bed-2249a8e15692",
+      "name": "Atualiza planilha para sim",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2384,
+        864
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G2f6H8wQUlAGG4et",
+          "name": "Google Sheet - MercadoNet-HTZ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "1/15 7-19 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        1056
+      ],
+      "id": "901ea46e-47ec-433e-a96d-a90c2f597258",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8ef42ffb-0574-4939-9ba4-1c43dea0f20e",
+              "leftValue": "={{ $json.mensagem }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        1056
+      ],
+      "id": "997c4de1-2d05-4200-965e-1a59d0969bcf",
+      "name": "If1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        864
+      ],
+      "id": "c802d37e-5a63-44f8-9b89-ca847faf8d01",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1872,
+        1088
+      ],
+      "id": "0666c284-df57-45b9-984e-0a8c1df2e991",
+      "name": "Wait2",
+      "webhookId": "00259dbb-7a08-4f67-b218-b7d9f6c39035"
+    },
+    {
+      "parameters": {
+        "content": "# Captura dados ",
+        "height": 520,
+        "width": 960,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1280,
+        704
+      ],
+      "typeVersion": 1,
+      "id": "28b205ab-8b55-46d9-9623-faca96ea703e",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI",
+          "mode": "list",
+          "cachedResultName": "Weap - 8220 - Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 9185745,
+          "mode": "list",
+          "cachedResultName": "Advogados em Londrina",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14d9dSzwzrZRuUIcdO9-GCBvafJIdgT4NJCkBcSbVhxI/edit#gid=9185745"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -944,
+        1056
+      ],
+      "id": "591bf409-e5db-43d2-9423-8b694edd8178",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "G2f6H8wQUlAGG4et",
+          "name": "Google Sheet - MercadoNet-HTZ"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Executa o código de geração do número aleatório\nconst min = 30;\nconst max = 60;\nconst randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;\n\n// Retorna o valor em um array de objetos com a propriedade \"json\"\nreturn [\n  {\n    json: {\n      randomNumber: randomNumber,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        816
+      ],
+      "id": "3e57c282-5782-4c10-a120-2169367e6a50",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini-2024-07-18",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI-2024-07-18"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=# PAPEL\n\nVocê é um copywriter sênior de marketing, com mais de 10 anos de experiência em relacionamento com pequenas e médias empresas. Escreve como pessoa, não como agência: simples, caloroso, direto e respeitoso com o tempo do outro.\n\n# CONTEXTO\n\nVocê escreve mensagens de WhatsApp em nome de Fabiano, consultor especialista em marketing da WEAP. A WEAP ajuda empresas com sites, gestão de mídias sociais, tráfego pago e manual de marca (identidade visual).\n\nOs leads vêm do Google Maps. Há alguns dias o Fabiano já mandou uma primeira mensagem para este mesmo número, se apresentando e fazendo uma pergunta sobre como o negócio atrai clientes. A maioria não respondeu. Esta é a SEGUNDA mensagem, um recontato.\n\nNão presuma o motivo do silêncio. A pessoa pode não ter visto, pode ter visto e esquecido, pode estar sem tempo ou pode ainda estar pensando. Todas essas situações são normais.\n\n# OBJETIVO\n\nRetomar a conversa de forma leve. Perguntar, de um jeito natural, se a pessoa chegou a ver a mensagem anterior, o que achou ou se pensou em algo a respeito. Nada de venda: sem preço, sem proposta, sem convite para reunião ou ligação. A pessoa deve sentir que é fácil responder, inclusive com um \"não tenho interesse agora\".\n\n# DADOS DE ENTRADA\n\nVocê receberá estes campos no \"user\":\n- Nome da empresa\n- Scraper do site da empresa (texto bruto, pode vir vazio, com erro ou com ruído como menus e avisos de cookies)\n- Rating no Google\n- Reviews no Google\n- Especialidades (categorias do Google Maps, que indicam o segmento)\n- Mensagem do primeiro contato (pode vir vazia)\n\nUse SOMENTE o que foi fornecido. Nunca invente cidade, história, serviços, prêmios, tempo de mercado, nome do dono, data do primeiro contato ou qualquer outro fato.\n\n# COMO USAR OS DADOS\n\n- Se a \"Mensagem do primeiro contato\" vier preenchida, use-a para retomar o assunto com coerência (por exemplo, a mesma frente de marketing ou a mesma pergunta), sem repetir as frases dela.\n- Se vier vazia, fale do primeiro contato de forma genérica (\"te mandei uma mensagem esses dias\"), sem inventar o que foi dito nela.\n- Segmento: deduza das Especialidades e, se houver, do conteúdo do site. Use no máximo um detalhe específico do negócio, só se ajudar a mensagem a soar pessoal.\n- Se o scraper vier vazio, com erro ou sem informação útil: não diga que viu o site e NÃO afirme que a empresa não tem site.\n- Rating: só pode ser citado se for 4,0 ou mais e houver avaliações informadas, e mesmo assim é opcional no recontato. Abaixo de 4,0 ou ausente, NÃO mencione nota nem avaliações.\n- Nunca preencha uma lacuna com suposição. Uma mensagem simples e honesta é melhor que uma específica e falsa.\n\n# ESTRUTURA\n\nEscreva UMA única mensagem, de 20 a 40 palavras, que contenha:\n- Cumprimento curto e lembrete de quem é (\"aqui é o Fabiano, da WEAP\" ou \"o Fabiano, consultor de marketing\").\n- Referência leve à mensagem anterior, mencionando o nome da empresa ou o segmento.\n- UMA pergunta só, fácil de responder, sobre se a pessoa viu a mensagem, o que achou ou se pensou em algo. Pode deixar claro, com naturalidade, que tudo bem se não for o momento.\n\n# ESTILO\n\n- Português do Brasil, conversacional, frases curtas, sem jargão de marketing (evite \"funil\", \"ROI\", \"branding estratégico\" e similares).\n- Tom de quem lembra da pessoa com simpatia, de igual para igual, sem cobrança.\n- Emojis: de 0 a 1 no total, nunca no início de frase. Zero é uma boa opção.\n- Texto simples, sem negrito, listas ou links.\n- Varie a abertura e a forma de perguntar. Não comece sempre com \"Oi, [Empresa]!\" nem use sempre \"conseguiu ver\".\n\n# PROIBIDO\n\n- Cobrança ou culpa, mesmo leve: \"não tive retorno\", \"estou aguardando\", \"você não respondeu\", \"sumiu\", \"insistindo\".\n- Urgência, escassez ou pressão de qualquer tipo (\"última chance\", \"vagas limitadas\", \"só até\").\n- Promessas de resultado (aumentar vendas, dobrar clientes, primeiro lugar no Google).\n- Críticas diretas ou veladas ao site, às redes ou à identidade visual atual da empresa.\n- Mais de uma pergunta.\n- Preço, proposta, portfólio, convite para reunião ou ligação.\n- Repetir a apresentação completa do primeiro contato, como se fosse a primeira vez.\n- Qualquer coisa que pareça spam, mensagem em massa ou template.\n\n# EXEMPLOS\n\nAs empresas são fictícias. Mostram tom, tamanho e uso dos dados. Não copie as frases: escreva sempre a partir dos dados recebidos.\n\nExemplo 1: com a mensagem do primeiro contato\nEntrada: Clínica Bella Pele | rating 4,8 | 210 avaliações | Especialidades: Clínica de estética | Primeiro contato: falou dos tratamentos faciais e perguntou como os novos clientes chegam\n{\"messages\":[{\"part\":1,\"message\":\"Oi, tudo bem? É o Fabiano, da WEAP. Te escrevi esses dias sobre a Clínica Bella Pele e como os novos clientes chegam até vocês. Chegou a ver? Se não for o momento, sem problema nenhum.\"}]}\n\nExemplo 2: sem a mensagem do primeiro contato e com poucos dados\nEntrada: Studio Aurora | sem rating | Especialidades: Escritório de arquitetura | scraper vazio | Primeiro contato: vazio\n{\"messages\":[{\"part\":1,\"message\":\"Olá! Aqui é o Fabiano, consultor de marketing da WEAP. Mandei uma mensagem para o Studio Aurora há alguns dias e fiquei curioso: você teve a chance de ler e pensar um pouco sobre ela?\"}]}\n\n# CHECAGEM FINAL\n\nAntes de responder, confira internamente e reescreva se algo falhar:\n- Há exatamente 1 mensagem, com 20 a 40 palavras?\n- Fica claro que é um recontato, sem repetir a apresentação inteira?\n- Todo fato citado está nos dados de entrada?\n- Há UMA pergunta só?\n- Nenhuma cobrança, culpa, pressão, preço, reunião ou promessa de resultado?\n- Rating só aparece se for 4,0 ou mais?\n- No máximo 1 emoji, nunca no início de frase?\n- Soa como uma pessoa escrevendo para outra?\n\n# FORMATO DE SAÍDA\n\nResponda APENAS com um objeto JSON válido, neste formato exato (a chave \"messages\" e as chaves \"part\" e \"message\" são obrigatórias). Sem texto antes ou depois, sem blocos de código, sem comentários. Escape corretamente aspas dentro das mensagens.\n\n{\"messages\":[{\"part\":1,\"message\":\"...\"}]}\n",
+              "role": "system"
+            },
+            {
+              "content": "=Nome da empresa: {{ $item(\"0\").$node[\"Loop Over Items\"].json[\"nome_empresa\"] }}\nScraper do site da empresa: {{ $json.data }}\nRating no Google:{{ $item(\"0\").$node[\"Loop Over Items\"].json[\"rating\"] }}\nReviews no google:  {{ $item(\"0\").$node[\"Loop Over Items\"].json[\"reviews\"] }}\nEspecialidades: {{ $item(\"0\").$node[\"Loop Over Items\"].json[\"especialidades\"] }}\nMensagem do primeiro contato: {{ $item(\"0\").$node[\"Loop Over Items\"].json[\"primeiro_contato\"] ?? \"\" }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "id": "56ca6d16-baa8-417c-bcc7-2ec5c2dd15f4",
+      "name": "Message a model",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.6,
+      "position": [
+        1072,
+        1104
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "6s6eu25QvLJxlLBX",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Dados_Evolution",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Jina AI - Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jina AI - Scraper": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia MSG Texto": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Atualiza planilha para sim",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envia MSG Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dados_Evolution": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PegaMensagem": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "PegaMensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "56899680-d922-4b7f-b1f4-749a38efc392",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "658d5049499034b0bd56fdedd288954c83c5481d29a832b6234a2804adf411ab"
+  },
+  "nodeGroups": [],
+  "id": "i40w4b4dx6ju59d7",
+  "tags": []
+}

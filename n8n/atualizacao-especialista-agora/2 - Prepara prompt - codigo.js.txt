@@ -1,0 +1,101 @@
+// Calcula os horários livres da agenda e monta o texto que vai para a IA.
+const ctx = $('Monta contexto').first().json;
+const tz = 'America/Sao_Paulo';
+const cfg = ctx.cfg || {};
+const lead = ctx.lead || {};
+const nicho = ctx.nicho || {};
+const h = Object.assign({ dias: [1,2,3,4,5], inicio: '09:00', fim: '18:00', almoco: ['12:00','13:30'], duracao: 30, antecedencia_horas: 3 }, cfg.horarios || {});
+// Janela em que o especialista pode chamar o lead na hora (padrão: seg a sex, 8h às 18h)
+const plantao = Object.assign({ dias: [1,2,3,4,5], inicio: '08:00', fim: '18:00' }, (cfg.horarios && cfg.horarios.plantao) || {});
+const dias = ['seg','ter','qua','qui','sex','sáb','dom'];
+const rotulo = (t) => `${dias[t.weekday - 1]} ${t.toFormat('dd/MM')} às ${t.toFormat("HH'h'mm")}`;
+const agora = DateTime.now().setZone(tz);
+const hhmm = agora.toFormat('HH:mm');
+const disponivelAgora = cfg.tipo !== undefined && plantao.dias.includes(agora.weekday) && hhmm >= plantao.inicio && hhmm < plantao.fim;
+
+let slots = [];
+const statusAgenda = ['respondeu','interessado','novo','contatado','sem_interesse'];
+const itens = $input.all().map(i => i.json);
+const erroAgenda = itens.some(e => e && e.error);
+if (cfg.agenda_id && statusAgenda.includes(lead.status) && !erroAgenda) {
+  const busy = itens
+    .filter(e => e && e.start && e.status !== 'cancelled' && e.transparency !== 'transparent')
+    .map(e => ({
+      s: DateTime.fromISO(e.start.dateTime || e.start.date, { zone: tz }),
+      e: DateTime.fromISO(e.end.dateTime || e.end.date, { zone: tz }),
+    }));
+  const min = agora.plus({ hours: h.antecedencia_horas });
+  const hm = (s) => { const [a, b] = String(s).split(':').map(Number); return { hour: a, minute: b || 0, second: 0, millisecond: 0 }; };
+  for (let d = 0; d < 21 && slots.length < 8; d++) {
+    const dia = agora.plus({ days: d }).startOf('day');
+    if (!h.dias.includes(dia.weekday)) continue;
+    let t = dia.set(hm(h.inicio));
+    const fim = dia.set(hm(h.fim));
+    const a1 = h.almoco ? dia.set(hm(h.almoco[0])) : null;
+    const a2 = h.almoco ? dia.set(hm(h.almoco[1])) : null;
+    let n = 0;
+    while (t.plus({ minutes: h.duracao }) <= fim && n < 3 && slots.length < 8) {
+      const te = t.plus({ minutes: h.duracao });
+      const livre = t >= min && !(a1 && t < a2 && te > a1) && !busy.some(b => t < b.e && te > b.s);
+      if (livre) {
+        slots.push({ inicio: t.toISO({ suppressMilliseconds: true }), rotulo: rotulo(t) });
+        n++;
+        t = t.plus({ minutes: 120 });
+      } else {
+        t = t.plus({ minutes: 30 });
+      }
+    }
+  }
+}
+
+const hist = Array.isArray(ctx.historico) ? ctx.historico : [];
+const nome = (a) => a === 'lead' ? 'Lead' : a === 'humano' ? `WEAP (${cfg.responsavel_nome}, escrito por ele)` : a === 'disparo' ? 'WEAP (mensagem de prospecção)' : 'WEAP (assistente)';
+let ultimoOut = -1;
+hist.forEach((m, i) => { if (m.autor !== 'lead') ultimoOut = i; });
+const antigas = hist.slice(0, ultimoOut + 1);
+const novas = hist.slice(ultimoOut + 1).filter(m => m.autor === 'lead');
+const linha = (m) => `[${m.quando}] ${nome(m.autor)}: ${m.texto}`;
+const midias = Array.isArray(ctx.midias) ? ctx.midias : [];
+const proposto = lead.horario_proposto ? rotulo(DateTime.fromISO(lead.horario_proposto).setZone(tz)) : '';
+
+const prompt = [
+  '# NÚMERO DA WEAP NESTA CONVERSA',
+  `Responsável: ${cfg.responsavel_nome || 'equipe WEAP'}`,
+  `Cidade: ${cfg.cidade || 'não informada'}`,
+  `Tipo: ${cfg.tipo === 'trafego' ? 'tráfego (o lead veio de um anúncio da WEAP)' : 'prospecção (a WEAP mandou a primeira mensagem)'}`,
+  `Modo de agenda: ${cfg.modo_agenda || 'sugerir'}`,
+  `ESPECIALISTA DISPONÍVEL AGORA: ${disponivelAgora ? 'sim' : 'não'}`,
+  '',
+  '# LEAD',
+  `Empresa: ${lead.nome_empresa || 'não informada'}`,
+  `Nome no WhatsApp: ${lead.nome_contato || 'não informado'}`,
+  `Especialidades no Google Maps: ${lead.especialidades || 'não informadas'}`,
+  `Nicho: ${lead.nicho || 'geral'}`,
+  `Status atual: ${lead.status || 'novo'}`,
+  `Resumo até agora: ${lead.resumo || 'nenhum'}`,
+  `Horário já escolhido aguardando confirmação: ${lead.status === 'agendamento_pendente' && proposto ? proposto : 'nenhum'}`,
+  `Reunião marcada: ${lead.status === 'agendado' && proposto ? proposto : 'nenhuma'}`,
+  '',
+  '# REGRAS DO NICHO',
+  nicho.regras || 'Sem promessa de resultado, sem preço.',
+  `Frentes que mais fazem sentido: ${nicho.frentes || 'site, gestão de redes, tráfego pago, manual de marca'}`,
+  '',
+  '# MÍDIAS DISPONÍVEIS',
+  midias.length ? midias.map(m => `- id ${m.id} (${m.tipo === 'video' ? 'vídeo' : 'imagem'}): ${m.descricao}`).join('\n') : 'nenhuma',
+  '',
+  '# HORÁRIOS LIVRES (conversa de ' + h.duracao + ' minutos)',
+  !cfg.agenda_id ? 'agenda não configurada: não proponha horários'
+    : erroAgenda ? 'agenda indisponível agora: não proponha horários; se a pessoa quiser conversar, use passar_humano'
+    : !statusAgenda.includes(lead.status) ? 'não ofereça horários nesta etapa (já existe horário escolhido, reunião marcada ou o responsável assumiu)'
+    : (slots.length ? slots.map(s => `- inicio ${s.inicio} | rótulo "${s.rotulo}"`).join('\n') : 'nenhum horário livre nos próximos dias'),
+  '',
+  '# CONVERSA ATÉ AGORA (mais antiga primeiro)',
+  antigas.length ? antigas.map(linha).join('\n') : '(nenhuma mensagem anterior registrada)',
+  '',
+  '# MENSAGENS NOVAS DO LEAD (responda a estas)',
+  novas.map(linha).join('\n'),
+  '',
+  `Agora: ${dias[agora.weekday - 1]} ${agora.toFormat("dd/MM/yyyy HH'h'mm")} (horário de Brasília).`,
+].join('\n');
+
+return [{ json: { slots, prompt, disponivel_agora: disponivelAgora } }];

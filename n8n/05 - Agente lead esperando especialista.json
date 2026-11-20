@@ -1,0 +1,236 @@
+{
+  "name": "05 - Agente: lead esperando especialista",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "04978228-6098-57f9-9720-b9b29a5d146c",
+      "name": "A cada 2 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT l.id, l.whatsapp, l.instancia,\n       coalesce(l.nome_empresa, l.nome_contato, 'Lead') AS empresa,\n       i.responsavel_nome, i.responsavel_whatsapp,\n       (SELECT valor FROM sdr_config WHERE chave = 'evolution_url') AS evolution_url,\n       (SELECT valor FROM sdr_config WHERE chave = 'instancia_avisos') AS instancia_avisos\n  FROM sdr_leads l\n  JOIN sdr_instancias i ON i.instancia = l.instancia AND i.ativo\n WHERE l.chamado_em IS NOT NULL\n   AND l.chamado_em < now() - make_interval(mins => coalesce((SELECT valor FROM sdr_config WHERE chave = 'espera_especialista_min')::int, 10))\n   AND l.chamado_em > now() - interval '1 day'\n   AND l.ia_pausada AND l.status = 'humano' AND NOT l.opt_out\n   AND l.whatsapp IS NOT NULL\n   AND NOT EXISTS (SELECT 1 FROM sdr_mensagens m WHERE m.lead_id = l.id AND m.autor = 'humano' AND m.criado_em > l.chamado_em);",
+        "options": {}
+      },
+      "id": "3b5f4a81-f31f-5b2e-b34a-55c6be2cdcb1",
+      "name": "Leads esperando o especialista",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "texto",
+              "value": "={{ 'Desculpa a demora! O ' + $json.responsavel_nome + ' ficou preso num atendimento e eu não quero te deixar esperando. Podemos marcar uma conversa rápida de 30 minutos? Me diz se fica melhor de manhã ou à tarde que eu vejo os horários.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "33246c06-2891-59c0-a538-912032f03afc",
+      "name": "Monta mensagem",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}/message/sendText/{{ $json.instancia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.whatsapp, text: $json.texto, delay: 1500 }) }}",
+        "options": {}
+      },
+      "id": "364dbad1-1020-5535-8b07-6add9e7d1e77",
+      "name": "Reassume a conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Evolution API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH m AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, msg_id)\n  VALUES ($1::bigint, $2, 'out', 'ia', $3, nullif($4, ''))\n)\nUPDATE sdr_leads SET ia_pausada = false, status = 'interessado', chamado_em = NULL, atualizado_em = now()\n WHERE id = $1::bigint RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ String($('Monta mensagem').item.json.id), $('Monta mensagem').item.json.instancia, $('Monta mensagem').item.json.texto, String(($json.key || {}).id || '') ] }}"
+        }
+      },
+      "id": "c929f4b5-0ff0-5439-b9ef-17e54925d38a",
+      "name": "Reativa IA no banco",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Monta mensagem').item.json.evolution_url }}/message/sendText/{{ $('Monta mensagem').item.json.instancia_avisos }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Monta mensagem').item.json.responsavel_whatsapp, text: '⏰ Ninguém chamou ' + $('Monta mensagem').item.json.empresa + ' a tempo. A IA pediu desculpas e está oferecendo horários. Se ainda quiser falar com ele agora, é só responder no WhatsApp (número ' + $('Monta mensagem').item.json.instancia + ') que a IA sai de novo: https://wa.me/' + $('Monta mensagem').item.json.whatsapp }) }}",
+        "options": {}
+      },
+      "id": "4d81ded2-1b79-5831-920c-bd405d298f17",
+      "name": "Avisa responsável",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Evolution API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## Lead esperando o especialista\nA cada 2 minutos procura leads que aceitaram falar com o especialista AGORA e ninguém chamou no tempo de sdr_config.espera_especialista_min (padrão 10 min).\nA IA pede desculpas, oferece marcar e avisa o responsável.\nSe o responsável responder no celular antes do prazo, nada acontece.",
+        "height": 220,
+        "width": 520,
+        "color": 4
+      },
+      "id": "2bec154d-6ff7-58b3-b9f4-9e545eea27a4",
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "A cada 2 minutos": {
+      "main": [
+        [
+          {
+            "node": "Leads esperando o especialista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leads esperando o especialista": {
+      "main": [
+        [
+          {
+            "node": "Monta mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta mensagem": {
+      "main": [
+        [
+          {
+            "node": "Reassume a conversa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reassume a conversa": {
+      "main": [
+        [
+          {
+            "node": "Reativa IA no banco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reativa IA no banco": {
+      "main": [
+        [
+          {
+            "node": "Avisa responsável",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveDataSuccessExecution": "none"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

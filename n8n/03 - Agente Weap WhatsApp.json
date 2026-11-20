@@ -1,0 +1,1492 @@
+{
+  "name": "03 - Agente Weap WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "weap-agente",
+        "options": {}
+      },
+      "id": "fb0ac6c9-a951-59fe-a27f-ba76bd7609fd",
+      "name": "Recebe mensagem",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "50386ec2-42c3-5183-be5b-6080a65837e0"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lê o webhook da Evolution (v2) e devolve só o que interessa.\n// Ignora grupos, status, canais, reações e eventos que não são mensagem.\nconst out = [];\nfor (const it of $input.all()) {\n  const b = it.json.body || it.json;\n  const ev = String(b.event || '').toLowerCase().replace(/_/g, '.');\n  if (ev !== 'messages.upsert') continue;\n  const d = Array.isArray(b.data) ? b.data[0] : b.data;\n  if (!d || !d.key) continue;\n  let jid = d.key.remoteJid || '';\n  if (jid.endsWith('@lid')) jid = d.key.remoteJidAlt || d.key.senderPn || '';\n  if (!jid.endsWith('@s.whatsapp.net')) continue;\n  const m = d.message || {};\n  if (m.protocolMessage || m.reactionMessage || m.pollUpdateMessage) continue;\n  let texto = m.conversation || (m.extendedTextMessage && m.extendedTextMessage.text) ||\n    (m.imageMessage && m.imageMessage.caption) || (m.videoMessage && m.videoMessage.caption) ||\n    (m.documentMessage && m.documentMessage.caption) ||\n    (m.buttonsResponseMessage && m.buttonsResponseMessage.selectedDisplayText) ||\n    (m.listResponseMessage && m.listResponseMessage.title) || '';\n  let tipo = 'texto';\n  if (m.audioMessage) { tipo = 'audio'; texto = '[mandou um áudio]'; }\n  else if (m.imageMessage) { tipo = 'imagem'; texto = texto ? '[imagem] ' + texto : '[mandou uma imagem sem texto]'; }\n  else if (m.videoMessage) { tipo = 'video'; texto = texto ? '[vídeo] ' + texto : '[mandou um vídeo sem texto]'; }\n  else if (m.stickerMessage) { tipo = 'figurinha'; texto = '[mandou uma figurinha]'; }\n  else if (m.documentMessage) { tipo = 'documento'; texto = texto ? '[documento] ' + texto : '[mandou um documento]'; }\n  else if (m.contactMessage || m.contactsArrayMessage) { tipo = 'contato'; texto = '[mandou um contato]'; }\n  else if (m.locationMessage) { tipo = 'localizacao'; texto = '[mandou uma localização]'; }\n  texto = String(texto).trim();\n  if (!texto) continue;\n  out.push({ json: {\n    instancia: b.instance,\n    msg_id: d.key.id,\n    from_me: !!d.key.fromMe,\n    whatsapp: jid.split('@')[0],\n    nome_contato: d.pushName || '',\n    tipo,\n    texto,\n  }});\n}\nreturn out;\n"
+      },
+      "id": "d36e0196-05f7-556f-8491-c4683b174e93",
+      "name": "Normaliza mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6a3a20ed-a620-5174-a6b0-300882c4eba7",
+              "leftValue": "={{ $json.from_me }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "52e395fd-8f74-5e07-94ca-66af9bb89f49",
+      "name": "Escrita no celular?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "c8ec6c17-0259-5149-a280-4f23998d659c",
+      "name": "Espera 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        -220
+      ],
+      "webhookId": "d2eb94a1-d4e6-53f5-a84a-45ef6f6f44d6"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH l AS (\n  SELECT * FROM sdr_leads WHERE chave = sdr_chave($1)\n),\nnovo AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, msg_id)\n  SELECT l.id, $3, 'out', 'humano', $4, $2 FROM l\n  WHERE NOT EXISTS (SELECT 1 FROM sdr_mensagens m WHERE m.msg_id = $2)\n  RETURNING lead_id\n)\nUPDATE sdr_leads s\n   SET ia_pausada = true,\n       status = CASE WHEN s.status = 'agendado' THEN s.status ELSE 'humano' END,\n       atualizado_em = now()\n  FROM novo\n WHERE s.id = novo.lead_id\n   AND sdr_em_conversa(s.status)\n   AND s.status <> 'sem_interesse'\n   AND NOT s.ia_pausada\nRETURNING s.id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Normaliza mensagem').item.json.whatsapp, $('Normaliza mensagem').item.json.msg_id, $('Normaliza mensagem').item.json.instancia, $('Normaliza mensagem').item.json.texto ] }}"
+        }
+      },
+      "id": "0f2e3315-a82c-51b7-8e4c-fafef57f7965",
+      "name": "Pausa IA se foi humano",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        -220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH cfg AS (\n  SELECT * FROM sdr_instancias WHERE instancia = $1 AND ativo\n),\nexistente AS (\n  SELECT l.* FROM sdr_leads l WHERE l.chave = sdr_chave($2) AND EXISTS (SELECT 1 FROM cfg) AND NOT sdr_interno($2)\n),\ncriado AS (\n  INSERT INTO sdr_leads (chave, telefone, whatsapp, instancia, nome_contato, origem, status, ultima_resposta_em)\n  SELECT sdr_chave($2), $2, $2, $1, nullif($3, ''), 'trafego', 'respondeu', now() FROM cfg\n  WHERE cfg.tipo = 'trafego' AND sdr_chave($2) IS NOT NULL AND NOT sdr_interno($2) AND NOT EXISTS (SELECT 1 FROM existente)\n  ON CONFLICT (chave) DO NOTHING\n  RETURNING *\n),\nlead AS (\n  SELECT id, ia_pausada, opt_out FROM existente\n  UNION ALL\n  SELECT id, ia_pausada, opt_out FROM criado\n),\nupd AS (\n  UPDATE sdr_leads s\n     SET whatsapp = $2, instancia = $1,\n         nome_contato = coalesce(s.nome_contato, nullif($3, '')),\n         ultima_resposta_em = now(), atualizado_em = now(),\n         status = CASE WHEN s.status IN ('contatado', 'novo') THEN 'respondeu' ELSE s.status END\n    FROM existente e WHERE s.id = e.id\n  RETURNING s.id\n),\nmsg AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, msg_id)\n  SELECT lead.id, $1, 'in', 'lead', $4, $5 FROM lead\n  WHERE NOT EXISTS (SELECT 1 FROM sdr_mensagens m WHERE m.msg_id = $5)\n  RETURNING id\n)\nSELECT lead.id AS lead_id, (SELECT id FROM msg) AS msg_db_id, lead.ia_pausada, lead.opt_out,\n       (SELECT count(*) FROM upd) AS atualizado\n  FROM lead;",
+        "options": {
+          "queryReplacement": "={{ [ $json.instancia, $json.whatsapp, $json.nome_contato, $json.texto, $json.msg_id ] }}"
+        }
+      },
+      "id": "9adbc6ab-366e-5af1-a1d3-af42c68a945d",
+      "name": "Registra mensagem do lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c9ca7197-533e-5246-b03e-3a57583e4785",
+              "leftValue": "={{ !!$json.msg_db_id && !$json.ia_pausada && !$json.opt_out }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "46e2ca0e-2b6e-5948-9db8-b14e13cb004a",
+      "name": "IA pode responder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "4305049c-1441-5837-979a-f15a2a255327",
+      "name": "Espera juntar mensagens",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        0
+      ],
+      "webhookId": "7313e035-057f-50ae-9b6c-063746c9797f"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH l AS (SELECT * FROM sdr_leads WHERE id = $1::bigint)\nSELECT\n  ($2::bigint = (SELECT max(id) FROM sdr_mensagens WHERE lead_id = l.id AND direcao = 'in')) AS sou_ultimo,\n  row_to_json(l) AS lead,\n  (SELECT row_to_json(i) FROM sdr_instancias i WHERE i.instancia = l.instancia) AS cfg,\n  (SELECT jsonb_object_agg(chave, valor) FROM sdr_config) AS conf,\n  (SELECT row_to_json(n) FROM sdr_nichos n WHERE n.nicho = l.nicho) AS nicho,\n  (SELECT coalesce(json_agg(h ORDER BY h.id), '[]'::json) FROM (\n      SELECT id, autor, texto, to_char(criado_em AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') AS quando\n        FROM sdr_mensagens WHERE lead_id = l.id ORDER BY id DESC LIMIT 30) h) AS historico,\n  (SELECT coalesce(json_agg(json_build_object('id', m.id, 'tipo', m.tipo, 'url', m.url, 'legenda', m.legenda, 'descricao', m.descricao) ORDER BY m.id), '[]'::json)\n     FROM sdr_midias m WHERE m.ativo AND m.nicho IN (l.nicho, 'geral')) AS midias\nFROM l;",
+        "options": {
+          "queryReplacement": "={{ [ $('Registra mensagem do lead').item.json.lead_id, $('Registra mensagem do lead').item.json.msg_db_id ] }}"
+        }
+      },
+      "id": "b94e61ed-1bd1-5c70-a1c0-433db3b2f721",
+      "name": "Monta contexto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1320,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "660bcfb0-9dda-5086-a19c-8d3e7498ef9e",
+              "leftValue": "={{ $json.sou_ultimo && !$json.lead.ia_pausada && !$json.lead.opt_out }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "3a691475-f516-5a76-bb8f-f23368a6d4f1",
+      "name": "É a última mensagem?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3a2ae511-4f7b-53e9-82fc-7cd97a67aadf",
+              "leftValue": "={{ !!($json.cfg && $json.cfg.agenda_id) && ['respondeu','interessado','novo','contatado','sem_interesse'].includes($json.lead.status) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ce0aa5db-3be4-5f3b-a110-7609e4aa0a44",
+      "name": "Tem agenda?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $json.cfg.agenda_id }}",
+          "mode": "id"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $now.toISO() }}",
+        "timeMax": "={{ $now.plus({ days: 21 }).toISO() }}",
+        "options": {
+          "singleEvents": true
+        }
+      },
+      "id": "82a8d191-bc65-5236-979a-2300cd4564c2",
+      "name": "Busca compromissos",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1980,
+        -120
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "",
+          "name": "Google Agenda Weap"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calcula os horários livres da agenda e monta o texto que vai para a IA.\nconst ctx = $('Monta contexto').first().json;\nconst tz = 'America/Sao_Paulo';\nconst cfg = ctx.cfg || {};\nconst lead = ctx.lead || {};\nconst nicho = ctx.nicho || {};\nconst h = Object.assign({ dias: [1,2,3,4,5], inicio: '09:00', fim: '18:00', almoco: ['12:00','13:30'], duracao: 30, antecedencia_horas: 3 }, cfg.horarios || {});\n// Janela em que o especialista pode chamar o lead na hora (padrão: seg a sex, 8h às 18h)\nconst plantao = Object.assign({ dias: [1,2,3,4,5], inicio: '08:00', fim: '18:00' }, (cfg.horarios && cfg.horarios.plantao) || {});\nconst dias = ['seg','ter','qua','qui','sex','sáb','dom'];\nconst rotulo = (t) => `${dias[t.weekday - 1]} ${t.toFormat('dd/MM')} às ${t.toFormat(\"HH'h'mm\")}`;\nconst agora = DateTime.now().setZone(tz);\nconst hhmm = agora.toFormat('HH:mm');\nconst disponivelAgora = cfg.tipo !== undefined && plantao.dias.includes(agora.weekday) && hhmm >= plantao.inicio && hhmm < plantao.fim;\n\nlet slots = [];\nconst statusAgenda = ['respondeu','interessado','novo','contatado','sem_interesse'];\nconst itens = $input.all().map(i => i.json);\nconst erroAgenda = itens.some(e => e && e.error);\nif (cfg.agenda_id && statusAgenda.includes(lead.status) && !erroAgenda) {\n  const busy = itens\n    .filter(e => e && e.start && e.status !== 'cancelled' && e.transparency !== 'transparent')\n    .map(e => ({\n      s: DateTime.fromISO(e.start.dateTime || e.start.date, { zone: tz }),\n      e: DateTime.fromISO(e.end.dateTime || e.end.date, { zone: tz }),\n    }));\n  const min = agora.plus({ hours: h.antecedencia_horas });\n  const hm = (s) => { const [a, b] = String(s).split(':').map(Number); return { hour: a, minute: b || 0, second: 0, millisecond: 0 }; };\n  for (let d = 0; d < 21 && slots.length < 8; d++) {\n    const dia = agora.plus({ days: d }).startOf('day');\n    if (!h.dias.includes(dia.weekday)) continue;\n    let t = dia.set(hm(h.inicio));\n    const fim = dia.set(hm(h.fim));\n    const a1 = h.almoco ? dia.set(hm(h.almoco[0])) : null;\n    const a2 = h.almoco ? dia.set(hm(h.almoco[1])) : null;\n    let n = 0;\n    while (t.plus({ minutes: h.duracao }) <= fim && n < 3 && slots.length < 8) {\n      const te = t.plus({ minutes: h.duracao });\n      const livre = t >= min && !(a1 && t < a2 && te > a1) && !busy.some(b => t < b.e && te > b.s);\n      if (livre) {\n        slots.push({ inicio: t.toISO({ suppressMilliseconds: true }), rotulo: rotulo(t) });\n        n++;\n        t = t.plus({ minutes: 120 });\n      } else {\n        t = t.plus({ minutes: 30 });\n      }\n    }\n  }\n}\n\nconst hist = Array.isArray(ctx.historico) ? ctx.historico : [];\nconst nome = (a) => a === 'lead' ? 'Lead' : a === 'humano' ? `WEAP (${cfg.responsavel_nome}, escrito por ele)` : a === 'disparo' ? 'WEAP (mensagem de prospecção)' : 'WEAP (assistente)';\nlet ultimoOut = -1;\nhist.forEach((m, i) => { if (m.autor !== 'lead') ultimoOut = i; });\nconst antigas = hist.slice(0, ultimoOut + 1);\nconst novas = hist.slice(ultimoOut + 1).filter(m => m.autor === 'lead');\nconst linha = (m) => `[${m.quando}] ${nome(m.autor)}: ${m.texto}`;\nconst midias = Array.isArray(ctx.midias) ? ctx.midias : [];\nconst proposto = lead.horario_proposto ? rotulo(DateTime.fromISO(lead.horario_proposto).setZone(tz)) : '';\n\nconst prompt = [\n  '# NÚMERO DA WEAP NESTA CONVERSA',\n  `Responsável: ${cfg.responsavel_nome || 'equipe WEAP'}`,\n  `Cidade: ${cfg.cidade || 'não informada'}`,\n  `Tipo: ${cfg.tipo === 'trafego' ? 'tráfego (o lead veio de um anúncio da WEAP)' : 'prospecção (a WEAP mandou a primeira mensagem)'}`,\n  `Modo de agenda: ${cfg.modo_agenda || 'sugerir'}`,\n  `ESPECIALISTA DISPONÍVEL AGORA: ${disponivelAgora ? 'sim' : 'não'}`,\n  '',\n  '# LEAD',\n  `Empresa: ${lead.nome_empresa || 'não informada'}`,\n  `Nome no WhatsApp: ${lead.nome_contato || 'não informado'}`,\n  `Especialidades no Google Maps: ${lead.especialidades || 'não informadas'}`,\n  `Nicho: ${lead.nicho || 'geral'}`,\n  `Status atual: ${lead.status || 'novo'}`,\n  `Resumo até agora: ${lead.resumo || 'nenhum'}`,\n  `Horário já escolhido aguardando confirmação: ${lead.status === 'agendamento_pendente' && proposto ? proposto : 'nenhum'}`,\n  `Reunião marcada: ${lead.status === 'agendado' && proposto ? proposto : 'nenhuma'}`,\n  '',\n  '# REGRAS DO NICHO',\n  nicho.regras || 'Sem promessa de resultado, sem preço.',\n  `Frentes que mais fazem sentido: ${nicho.frentes || 'site, gestão de redes, tráfego pago, manual de marca'}`,\n  '',\n  '# MÍDIAS DISPONÍVEIS',\n  midias.length ? midias.map(m => `- id ${m.id} (${m.tipo === 'video' ? 'vídeo' : 'imagem'}): ${m.descricao}`).join('\\n') : 'nenhuma',\n  '',\n  '# HORÁRIOS LIVRES (conversa de ' + h.duracao + ' minutos)',\n  !cfg.agenda_id ? 'agenda não configurada: não proponha horários'\n    : erroAgenda ? 'agenda indisponível agora: não proponha horários; se a pessoa quiser conversar, use passar_humano'\n    : !statusAgenda.includes(lead.status) ? 'não ofereça horários nesta etapa (já existe horário escolhido, reunião marcada ou o responsável assumiu)'\n    : (slots.length ? slots.map(s => `- inicio ${s.inicio} | rótulo \"${s.rotulo}\"`).join('\\n') : 'nenhum horário livre nos próximos dias'),\n  '',\n  '# CONVERSA ATÉ AGORA (mais antiga primeiro)',\n  antigas.length ? antigas.map(linha).join('\\n') : '(nenhuma mensagem anterior registrada)',\n  '',\n  '# MENSAGENS NOVAS DO LEAD (responda a estas)',\n  novas.map(linha).join('\\n'),\n  '',\n  `Agora: ${dias[agora.weekday - 1]} ${agora.toFormat(\"dd/MM/yyyy HH'h'mm\")} (horário de Brasília).`,\n].join('\\n');\n\nreturn [{ json: { slots, prompt, disponivel_agora: disponivelAgora } }];\n"
+      },
+      "id": "35a0d90b-3e18-5486-b93f-869e8c813a18",
+      "name": "Prepara prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=# PAPEL\n\nVocê é o assistente de atendimento da WEAP no WhatsApp. Conversa em nome do responsável pelo número (o nome dele vem nos dados). Escreve como pessoa, não como robô ou agência: simples, caloroso, direto, frases curtas.\n\nA WEAP é uma agência de marketing que ajuda empresas com site, gestão de mídias sociais, tráfego pago, Google Meu Negócio e manual de marca (identidade visual).\n\n# SITUAÇÃO\n\nExistem dois tipos de número:\n- prospecção: a WEAP mandou a primeira mensagem para o lead (achou a empresa no Google Maps). A pessoa não pediu nada, então vá com leveza.\n- tráfego: o lead chegou por um anúncio da WEAP e procurou a gente. Seja acolhedor e mais direto, ele já tem interesse.\n\n# OBJETIVO\n\nEntender, em poucas trocas, o que a pessoa precisa e colocar quem tem interesse em contato com o especialista (o responsável pelo número). Não é para vender pelo WhatsApp e não é para marcar reunião logo de cara.\n\nCaminho natural:\n1. Responder exatamente o que a pessoa disse ou perguntou.\n2. Se fizer sentido, uma pergunta curta para entender o negócio ou o momento dela (de onde vêm os clientes hoje, o que quer melhorar).\n3. Quando houver interesse claro (pergunta como funciona com detalhe, quanto custa, pede proposta, diz que quer melhorar algo), o PRIMEIRO caminho é o especialista falar com a pessoa agora:\n   - Se ESPECIALISTA DISPONÍVEL AGORA = sim: pergunte se ela quer que o especialista (use o nome) chame agora mesmo, por aqui no WhatsApp. Se ela aceitar, use acao \"chamar_especialista\" e diga que ele já vai chamar.\n   - Se ESPECIALISTA DISPONÍVEL AGORA = não: diga com naturalidade que ele não está disponível neste momento e ofereça 2 dos HORÁRIOS LIVRES para uma conversa de 30 minutos.\n4. A agenda é o segundo caminho. Ofereça horários quando: o especialista não está disponível agora, a pessoa disse que agora não pode, ou a pessoa pediu para marcar.\n5. Quando a pessoa escolher um horário da lista, use acao \"agendar\" com o horario_inicio exato da lista.\n6. Não ofereça especialista nem horário para quem só está curioso ou ainda nem disse o que precisa. Converse primeiro.\n7. Se na conversa já existe a mensagem de desculpas porque o especialista não conseguiu chamar, NÃO ofereça chamar agora de novo: vá direto para os HORÁRIOS LIVRES.\n\n# REGRAS DE AGENDA\n\n- Só ofereça horários que estão em HORÁRIOS LIVRES, escritos do jeito do rótulo (ex.: \"qui 20/11 às 10h00\"). Nunca invente horário.\n- Se a pessoa pedir um horário que não está na lista, diga que esse não dá e ofereça os 2 mais próximos da lista.\n- Se não houver horários livres, não proponha horário: use acao \"passar_humano\" e diga que o responsável vai chamar para combinar.\n- Modo \"sugerir\": ao agendar, diga que vai confirmar o horário e já retorna (não diga que está confirmado).\n- Modo \"automatico\": ao agendar, confirme o dia e o horário. O link da conversa é enviado logo depois, automaticamente.\n- Se já existe reunião marcada, não proponha outra. Se a pessoa quiser remarcar ou cancelar, use \"passar_humano\".\n\n# MÍDIAS\n\n- Pode mandar UMA mídia da lista de MÍDIAS DISPONÍVEIS quando ajudar: a pessoa perguntou como funciona, quer ver trabalhos ou exemplos, ou está em dúvida. Informe o id em midia_id.\n- Não mande mídia logo na primeira resposta a quem só disse \"oi\" ou \"quem é?\".\n- Nunca repita uma mídia que já aparece como enviada na conversa.\n\n# QUANDO PASSAR PARA O RESPONSÁVEL (acao \"passar_humano\")\n\n- A pessoa insiste em preço ou proposta depois de você convidar para a conversa.\n- Reclamação, pedido sensível, assunto fora de marketing, pedido para ligar agora, remarcar ou cancelar.\n- Pergunta técnica que você não sabe responder com segurança.\n- A pessoa pede para falar com uma pessoa.\nNesses casos, responda algo curto e honesto, como \"vou pedir para o [responsável] te chamar\".\n\n# QUANDO A PESSOA NÃO QUER (acao \"opt_out\")\n\n- \"Não tenho interesse\", \"não quero\", \"pare\", \"me tira da lista\", \"não mande mais\" e parecidos.\n- Agradeça em uma frase, sem insistir nem tentar convencer, e use acao \"opt_out\".\n- \"Agora não\" ou \"mais para frente\" não é opt_out: agradeça, diga que fica à disposição, status \"sem_interesse\", acao \"nenhuma\".\n\n# PREÇO\n\n- Nunca fale valores, faixas de preço, descontos ou \"a partir de\".\n- Se perguntarem, explique que depende do que a empresa precisa e que na conversa de 30 minutos o responsável entende o caso e passa os valores. Ofereça horários.\n\n# ÁUDIO, IMAGEM E FIGURINHA\n\n- Se o lead mandou áudio, diga com simpatia que no momento não consegue ouvir e peça para escrever, em uma frase.\n- Imagem sem texto: agradeça e pergunte, com leveza, do que se trata.\n- Só figurinha ou emoji: responda curto e simpático, sem forçar assunto.\n\n# MENSAGENS AUTOMÁTICAS E BOTS\n\nMuitas empresas têm resposta automática no WhatsApp. Antes de responder, veja se as MENSAGENS NOVAS foram escritas por uma pessoa ou por um sistema.\n\n- Resposta automática (acao \"automatica\"): saudação ou ausência padrão (\"Olá! Obrigado pelo contato, em breve retornaremos\", \"nosso horário de atendimento é...\", \"estamos fora do expediente\"), aviso de \"mensagem automática\" ou pedido genérico para aguardar. Atrás dela costuma existir uma pessoa que vai ler depois. NÃO responda: deixe \"resposta\" vazia e use acao \"automatica\".\n- Robô de menu ou outra IA (acao \"bot\"): menu de opções (\"digite 1 para...\", \"escolha uma opção\", \"responda com o número\"), link de agendamento automático ou catálogo, a mesma mensagem repetida, ou respostas que claramente não vêm de uma pessoa. NÃO responda e NÃO escolha opções do menu: deixe \"resposta\" vazia e use acao \"bot\".\n- Se houver dúvida entre pessoa e sistema, trate como \"automatica\" e não responda. Quando uma pessoa escrever de verdade, você responde normalmente.\n\n# QUEM É VOCÊ\n\n- Se perguntarem quem é: diga o nome do responsável e que é da WEAP, agência de marketing. Se for número de prospecção, diga que encontrou a empresa no Google Maps.\n- Se perguntarem diretamente se é um robô ou IA, diga a verdade: é o assistente da WEAP que ajuda o responsável a responder, e que ele mesmo participa da conversa.\n\n# REGRAS DO NICHO\n\nSiga as REGRAS DO NICHO que vêm nos dados (OAB, CFP, CFO, CFM, CAU, CREA etc.). Nunca sugira algo que o conselho do profissional proíbe.\n\n# ESTILO\n\n- Português do Brasil, conversacional. De 1 a 3 frases curtas, no máximo 60 palavras.\n- No máximo UMA pergunta por resposta.\n- Emojis: no máximo 1, nunca no início de frase. Zero é uma boa opção.\n- Sem negrito, listas ou links.\n- Não repita frases que já estão na conversa. Não se apresente de novo se já se apresentou.\n- Use o nome do contato só se ele aparecer nos dados e parecer nome de pessoa.\n\n# PROIBIDO\n\n- Inventar fatos sobre a empresa do lead, sobre a WEAP, clientes, cases ou resultados.\n- Promessa de resultado (dobrar clientes, primeiro lugar no Google, vender mais).\n- Críticas ao site, às redes ou à marca atual do lead.\n- Pressão, urgência ou escassez.\n- Responder de novo algo que já foi respondido.\n\n# STATUS (escolha um)\n\n- respondeu: respondeu, mas ainda sem interesse claro.\n- interessado: demonstrou interesse, mas ainda não escolheu horário.\n- agendamento_pendente: escolheu um horário (modo sugerir).\n- agendado: reunião marcada (modo automatico) ou já existia reunião marcada.\n- sem_interesse: não quer agora ou pediu para sair.\n- humano: passou para o responsável (inclusive quando aceitou falar com o especialista agora).\n\n# FORMATO DE SAÍDA\n\nResponda APENAS com um objeto JSON válido, sem texto antes ou depois e sem blocos de código:\n\n{\"resposta\":\"texto para o lead\",\"midia_id\":null,\"acao\":\"nenhuma\",\"horario_inicio\":null,\"status\":\"respondeu\",\"resumo\":\"1 a 2 frases sobre o lead e a conversa até agora\",\"aviso_responsavel\":null}\n\n- acao: \"nenhuma\", \"propor_horarios\", \"chamar_especialista\", \"agendar\", \"passar_humano\", \"opt_out\", \"automatica\" ou \"bot\".\n- chamar_especialista: só quando a pessoa ACEITOU falar com o especialista agora.\n- horario_inicio: só com acao \"agendar\", copiado exatamente do campo inicio de HORÁRIOS LIVRES. Nos outros casos, null.\n- midia_id: número da mídia ou null.\n- aviso_responsavel: frase curta para o responsável quando acao for \"passar_humano\" ou \"chamar_especialista\" (o que o lead precisa). Nos outros casos, null.\n- Escape corretamente aspas dentro dos textos.\n",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "aed64bab-e5e1-5273-b8a0-64e20745e44f",
+      "name": "Agente IA",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.6,
+      "position": [
+        2420,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAi account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Confere a resposta da IA, aplica as regras e monta o que será enviado.\nconst ctx = $('Monta contexto').first().json;\nconst prep = $('Prepara prompt').first().json;\nconst cfg = ctx.cfg || {};\nconst conf = ctx.conf || {};\nconst lead = ctx.lead || {};\nlet r = $json.message && $json.message.content;\nif (typeof r === 'string') { try { r = JSON.parse(r.replace(/^```(json)?|```$/g, '').trim()); } catch (e) { r = {}; } }\nr = r || {};\n\nconst acoes = ['nenhuma','propor_horarios','chamar_especialista','agendar','passar_humano','opt_out','automatica','bot'];\nconst statusOk = ['respondeu','interessado','agendamento_pendente','agendado','sem_interesse','humano'];\nlet acao = acoes.includes(r.acao) ? r.acao : 'nenhuma';\nlet resposta = String(r.resposta || '').trim();\nlet status = statusOk.includes(r.status) ? r.status : (lead.status === 'contatado' || lead.status === 'novo' ? 'respondeu' : lead.status);\nlet slot = null;\n\n// Proteções contra robôs (independentes da IA)\nconst hist = Array.isArray(ctx.historico) ? ctx.historico : [];\nlet ultimoOut = -1;\nhist.forEach((m, i) => { if (m.autor !== 'lead') ultimoOut = i; });\nconst novas = hist.slice(ultimoOut + 1).filter(m => m.autor === 'lead').map(m => String(m.texto || '').trim().toLowerCase());\nconst anteriores = hist.slice(0, ultimoOut + 1).filter(m => m.autor === 'lead').map(m => String(m.texto || '').trim().toLowerCase());\nconst repetida = novas.length > 0 && novas.every(t => t.length > 15 && anteriores.includes(t));\nconst respostasIa = hist.filter(m => m.autor === 'ia').length;\nconst jaConversou = hist.some(m => m.autor === 'ia' || m.autor === 'humano');\nif (repetida) acao = 'bot';                       // mesma mensagem longa repetida = robô\nif (respostasIa >= 25 && acao !== 'bot') acao = 'passar_humano'; // conversa longa demais: chama uma pessoa\n\nif (acao === 'agendar') {\n  const alvo = DateTime.fromISO(String(r.horario_inicio || ''));\n  slot = prep.slots.find(s => s.inicio === r.horario_inicio) ||\n         (alvo.isValid ? prep.slots.find(s => DateTime.fromISO(s.inicio).toMillis() === alvo.toMillis()) : null);\n  if (!slot) {\n    acao = prep.slots.length ? 'propor_horarios' : 'passar_humano';\n    status = prep.slots.length ? 'interessado' : 'humano';\n  }\n}\nlet criar_evento = false;\nif (acao === 'agendar') {\n  if (cfg.modo_agenda === 'automatico') { criar_evento = true; status = 'agendado'; }\n  else { acao = 'pre_agendar'; status = 'agendamento_pendente'; }\n}\nif (acao === 'opt_out') status = 'sem_interesse';\nif (acao === 'automatica') { resposta = ''; status = jaConversou ? lead.status : 'contatado'; }\nif (acao === 'bot') { resposta = ''; status = 'bot'; }\nif (acao === 'passar_humano' || acao === 'chamar_especialista') status = 'humano';\n\nconst midias = Array.isArray(ctx.midias) ? ctx.midias : [];\nconst midia = (r.midia_id != null && resposta) ? (midias.find(m => String(m.id) === String(r.midia_id)) || null) : null;\n\nconst token = (lead.token && String(lead.token).length >= 20) ? lead.token\n  : Array.from({ length: 32 }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[Math.floor(Math.random() * 32)]).join('');\n\nconst base = String(conf.webhook_base || '').replace(/\\/$/, '');\nconst linkConfirmar = `${base}/weap-agente-acao?a=confirmar&l=${lead.id}&t=${token}`;\nconst linkRetomar = `${base}/weap-agente-acao?a=retomar&l=${lead.id}&t=${token}`;\nconst quem = `${lead.nome_empresa || lead.nome_contato || 'Lead'}${lead.nicho && lead.nicho !== 'geral' ? ' (' + lead.nicho + ')' : ''}`;\nconst wa = `https://wa.me/${lead.whatsapp || ''}`;\nconst resumo = String(r.resumo || lead.resumo || '').trim();\n\nlet aviso = '';\nif (acao === 'pre_agendar') {\n  aviso = `📅 ${quem} quer conversar ${slot.rotulo}.\\nResumo: ${resumo}\\nConversa: ${wa} (número ${lead.instancia})\\n\\nPara CONFIRMAR e já avisar o lead: ${linkConfirmar}\\n\\nSe não puder nesse horário, responda o lead direto no WhatsApp. A IA para de responder esse contato sozinha.`;\n} else if (acao === 'chamar_especialista') {\n  aviso = `🔥 CHAME AGORA: ${quem} aceitou falar com você agora pelo WhatsApp.\\nO que precisa: ${r.aviso_responsavel || resumo}\\nConversa: ${wa} (número ${lead.instancia})\\n\\nA IA parou de responder esse contato. Se não puder chamar, para a IA voltar e oferecer horários: ${linkRetomar}`;\n} else if (acao === 'passar_humano') {\n  aviso = `🙋 ${quem} precisa de você: ${r.aviso_responsavel || resumo}\\nConversa: ${wa} (número ${lead.instancia})\\nA IA parou de responder esse contato. Para reativar: ${linkRetomar}`;\n} else if (status === 'interessado' && lead.status !== 'interessado') {\n  aviso = `🔥 Lead interessado: ${quem}\\nResumo: ${resumo}\\nConversa: ${wa} (número ${lead.instancia})`;\n}\n\nreturn [{ json: {\n  lead_id: lead.id,\n  instancia: lead.instancia,\n  numero: lead.whatsapp,\n  resposta,\n  acao,\n  status,\n  resumo,\n  criar_evento,\n  inicio: slot ? slot.inicio : '',\n  fim: slot ? DateTime.fromISO(slot.inicio, { setZone: true }).plus({ minutes: (cfg.horarios && cfg.horarios.duracao) || 30 }).toISO({ suppressMilliseconds: true }) : '',\n  rotulo: slot ? slot.rotulo : '',\n  agenda_id: cfg.agenda_id || '',\n  token,\n  opt_out: acao === 'opt_out' || acao === 'bot',\n  pausar: acao === 'passar_humano' || acao === 'chamar_especialista',\n  midia,\n  aviso,\n  responsavel_whatsapp: cfg.responsavel_whatsapp || '',\n  instancia_avisos: conf.instancia_avisos || '',\n  evolution_url: String(conf.evolution_url || '').replace(/\\/$/, ''),\n  empresa: lead.nome_empresa || lead.nome_contato || 'Lead',\n  responsavel_nome: cfg.responsavel_nome || 'WEAP',\n}}];\n"
+      },
+      "id": "28dc10ac-a4e9-50b3-b6bc-698640770068",
+      "name": "Valida decisão",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b72fe993-b551-5d4a-9a23-5768f69c02d5",
+              "leftValue": "={{ $json.criar_evento }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "43f569f0-17dd-54c5-bf63-5e39009d7b28",
+      "name": "Marcar sozinha?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2860,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $json.agenda_id }}",
+          "mode": "id"
+        },
+        "start": "={{ $json.inicio }}",
+        "end": "={{ $json.fim }}",
+        "additionalFields": {
+          "summary": "=Conversa Weap: {{ $json.empresa }}",
+          "description": "=Lead: {{ $json.empresa }}\nWhatsApp: https://wa.me/{{ $json.numero }}\nNúmero Weap: {{ $json.instancia }}\nResponsável: {{ $json.responsavel_nome }}\n\nResumo: {{ $json.resumo }}\n\n(Marcado pelo agente de WhatsApp)",
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "hangoutsMeet"
+            }
+          }
+        }
+      },
+      "id": "0339fcb7-cfa2-5b58-9503-f0de9763dd3d",
+      "name": "Cria evento",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        3080,
+        -120
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "",
+          "name": "Google Agenda Weap"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Junta a decisão com o evento criado (quando a IA marcou sozinha).\nconst v = Object.assign({}, $('Valida decisão').first().json);\nv.evento_id = '';\nv.link_reuniao = '';\nif (v.criar_evento) {\n  let ev = null;\n  try { ev = $('Cria evento').first().json; } catch (e) { ev = null; }\n  if (ev && ev.id) {\n    v.evento_id = ev.id;\n    v.link_reuniao = ev.hangoutLink || ev.htmlLink || '';\n    if (v.link_reuniao) v.resposta = `${v.resposta}\\n\\nLink da nossa conversa: ${v.link_reuniao}`.trim();\n    v.aviso = `✅ Reunião marcada pela IA: ${v.empresa}, ${v.rotulo}.\\nResumo: ${v.resumo}\\nLink: ${v.link_reuniao}\\nConversa: https://wa.me/${v.numero}`;\n  } else {\n    v.status = 'humano';\n    v.pausar = true;\n    v.aviso = `⚠️ A IA tentou marcar ${v.empresa} para ${v.rotulo}, mas não conseguiu criar o evento na agenda. Confirme com o lead: https://wa.me/${v.numero}`;\n  }\n}\nv.tem_midia = !!(v.midia && v.midia.url);\nif (v.tem_midia) {\n  const url = String(v.midia.url);\n  const nomeArq = url.split('?')[0].split('/').pop() || (v.midia.tipo === 'video' ? 'video.mp4' : 'imagem.jpg');\n  const ext = (nomeArq.split('.').pop() || '').toLowerCase();\n  const mimes = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', mp4: 'video/mp4', mov: 'video/quicktime' };\n  v.midia_body = {\n    number: v.numero,\n    mediatype: v.midia.tipo === 'video' ? 'video' : 'image',\n    mimetype: mimes[ext] || (v.midia.tipo === 'video' ? 'video/mp4' : 'image/jpeg'),\n    caption: v.midia.legenda || '',\n    media: url,\n    fileName: nomeArq,\n    delay: 1200,\n  };\n}\nv.tem_texto = !!String(v.resposta || '').trim();\nv.tem_aviso = !!(v.aviso && v.responsavel_whatsapp && v.instancia_avisos);\nreturn [{ json: v }];\n"
+      },
+      "id": "12268753-b458-58ff-a2d2-6a8f6e9fba5d",
+      "name": "Prepara envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2d9cb8e-4077-5423-85d2-472fbb42d791",
+              "leftValue": "={{ $json.tem_midia }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "39f9d809-b117-5149-aefc-ddc7656192e5",
+      "name": "Tem mídia?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.evolution_url }}/message/sendMedia/{{ $json.instancia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.midia_body) }}",
+        "options": {}
+      },
+      "id": "032f5fd7-929c-52ff-ba15-f0affab075b6",
+      "name": "Envia mídia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3740,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Evolution API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fea3915e-27ab-5186-bf1d-887fb73f49a6",
+              "leftValue": "={{ $('Prepara envio').first().json.tem_texto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "e59861fe-6427-5709-9011-5cc62997157e",
+      "name": "Tem texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Prepara envio').first().json.evolution_url }}/message/sendText/{{ $('Prepara envio').first().json.instancia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Prepara envio').first().json.numero, text: $('Prepara envio').first().json.resposta, delay: 1500 }) }}",
+        "options": {}
+      },
+      "id": "2888d5e5-a5ef-5a24-81d0-8e149f34d095",
+      "name": "Envia resposta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4180,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Evolution API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH m1 AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto)\n  SELECT $1::bigint, $2, 'out', 'ia', '[mídia ' || $3 || ' enviada]' WHERE $3 <> ''\n),\nm2 AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, msg_id)\n  SELECT $1::bigint, $2, 'out', 'ia', $4, nullif($5, '') WHERE $4 <> ''\n)\nUPDATE sdr_leads\n   SET status = $6,\n       resumo = coalesce(nullif($7, ''), resumo),\n       opt_out = opt_out OR $8::boolean,\n       ia_pausada = ia_pausada OR $9::boolean,\n       horario_proposto = coalesce(nullif($10, '')::timestamptz, horario_proposto),\n       token = $11,\n       evento_id = coalesce(nullif($12, ''), evento_id),\n       link_reuniao = coalesce(nullif($13, ''), link_reuniao),\n       chamado_em = CASE WHEN $14::boolean THEN now() ELSE chamado_em END,\n       ultimo_contato_em = now(), atualizado_em = now()\n WHERE id = $1::bigint\nRETURNING id, status;",
+        "options": {
+          "queryReplacement": "={{ (() => { const v = $('Prepara envio').first().json; let id = ''; try { id = ($('Envia resposta').first().json.key || {}).id || ''; } catch (e) {} return [ String(v.lead_id), v.instancia || '', v.tem_midia ? '#' + v.midia.id + ' (' + v.midia.descricao + ')' : '', v.tem_texto ? v.resposta : '', id, v.status, v.resumo || '', String(!!v.opt_out), String(!!v.pausar), v.inicio || '', v.token, v.evento_id || '', v.link_reuniao || '', String(v.acao === 'chamar_especialista') ]; })() }}"
+        }
+      },
+      "id": "4a818a26-e438-5ec6-a880-3ce778e2bee1",
+      "name": "Registra resposta",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4400,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "df4e5ee0-f32c-5701-b509-353b6bf3c96f",
+              "leftValue": "={{ $('Prepara envio').first().json.tem_aviso }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "65b70750-355d-51c8-b1df-6e8cb01b4dc2",
+      "name": "Avisar responsável?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4620,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Prepara envio').first().json.evolution_url }}/message/sendText/{{ $('Prepara envio').first().json.instancia_avisos }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Prepara envio').first().json.responsavel_whatsapp, text: $('Prepara envio').first().json.aviso }) }}",
+        "options": {}
+      },
+      "id": "1c7af17b-07c7-5260-9297-f8f669c461c9",
+      "name": "Avisa responsável",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4840,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Evolution API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "weap-agente-acao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8ebaa80c-7821-5695-b532-28a712b69333",
+      "name": "Link do responsável",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        700
+      ],
+      "webhookId": "56d1ccb1-58a2-54da-9bc5-c3db80285d7e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT row_to_json(l) AS lead,\n       (SELECT row_to_json(i) FROM sdr_instancias i WHERE i.instancia = l.instancia) AS cfg,\n       (SELECT jsonb_object_agg(chave, valor) FROM sdr_config) AS conf\n  FROM sdr_leads l\n WHERE l.id::text = $1 AND l.token = $2 AND length(coalesce(l.token, '')) >= 20;",
+        "options": {
+          "queryReplacement": "={{ [ String($json.query.l || ''), String($json.query.t || '') ] }}"
+        }
+      },
+      "id": "c59b7c9b-1d67-57dc-be67-4a7002d7f1b6",
+      "name": "Valida link",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        220,
+        700
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "s1",
+                    "leftValue": "={{ !!$json.lead && $('Link do responsável').first().json.query.a === 'confirmar' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirmar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "s2",
+                    "leftValue": "={{ !!$json.lead && $('Link do responsável').first().json.query.a === 'retomar' }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "retomar"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "inválido"
+        }
+      },
+      "id": "333d932b-d57e-57bc-bcab-23ab390fe0ac",
+      "name": "Qual ação?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        440,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Link \"confirmar\" clicado pelo responsável: monta os dados do evento e a mensagem para o lead.\nconst c = $('Valida link').first().json;\nconst lead = c.lead || {};\nconst cfg = c.cfg || {};\nconst conf = c.conf || {};\nconst tz = 'America/Sao_Paulo';\nconst dias = ['seg','ter','qua','qui','sex','sáb','dom'];\nconst ini = DateTime.fromISO(lead.horario_proposto).setZone(tz);\nconst dur = (cfg.horarios && cfg.horarios.duracao) || 30;\nreturn [{ json: {\n  lead_id: lead.id,\n  instancia: lead.instancia,\n  numero: lead.whatsapp,\n  agenda_id: cfg.agenda_id || '',\n  inicio: ini.toISO({ suppressMilliseconds: true }),\n  fim: ini.plus({ minutes: dur }).toISO({ suppressMilliseconds: true }),\n  rotulo: `${dias[ini.weekday - 1]} ${ini.toFormat('dd/MM')} às ${ini.toFormat(\"HH'h'mm\")}`,\n  empresa: lead.nome_empresa || lead.nome_contato || 'Lead',\n  resumo: lead.resumo || '',\n  responsavel_nome: cfg.responsavel_nome || 'WEAP',\n  evolution_url: String(conf.evolution_url || '').replace(/\\/$/, ''),\n  ja_agendado: lead.status === 'agendado',\n  valido: ini.isValid && ini > DateTime.now(),\n}}];\n"
+      },
+      "id": "9fbcaddd-186e-5ced-99c7-58a6c0eeedc9",
+      "name": "Monta confirmação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8479f80a-ff7e-5fe6-9e6d-ec1d2e3d577b",
+              "leftValue": "={{ $json.valido && !$json.ja_agendado && !!$json.agenda_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "8a6e8b89-3238-5dd1-a640-381c06c5ce6f",
+      "name": "Pode confirmar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $json.agenda_id }}",
+          "mode": "id"
+        },
+        "start": "={{ $json.inicio }}",
+        "end": "={{ $json.fim }}",
+        "additionalFields": {
+          "summary": "=Conversa Weap: {{ $json.empresa }}",
+          "description": "=Lead: {{ $json.empresa }}\nWhatsApp: https://wa.me/{{ $json.numero }}\nNúmero Weap: {{ $json.instancia }}\nResponsável: {{ $json.responsavel_nome }}\n\nResumo: {{ $json.resumo }}",
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "hangoutsMeet"
+            }
+          }
+        }
+      },
+      "id": "e8aab44e-ec58-5e65-a5d7-8aa8e32a77ff",
+      "name": "Cria evento confirmado",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1100,
+        480
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "",
+          "name": "Google Agenda Weap"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Monta confirmação').first().json.evolution_url }}/message/sendText/{{ $('Monta confirmação').first().json.instancia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Monta confirmação').first().json.numero, text: 'Confirmado! Nossa conversa fica para ' + $('Monta confirmação').first().json.rotulo + (($json.hangoutLink) ? '. Link: ' + $json.hangoutLink : '') + '. Até lá! ' + $('Monta confirmação').first().json.responsavel_nome, delay: 1200 }) }}",
+        "options": {}
+      },
+      "id": "9e4221ba-8a48-5be0-bae4-b338a453fce6",
+      "name": "Confirma para o lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        480
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Evolution API"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH m AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, msg_id)\n  VALUES ($1::bigint, $2, 'out', 'ia', $3, nullif($4, ''))\n)\nUPDATE sdr_leads SET status = 'agendado', ia_pausada = false, evento_id = $5, link_reuniao = nullif($6, ''),\n       ultimo_contato_em = now(), atualizado_em = now()\n WHERE id = $1::bigint RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ (() => { const c = $('Monta confirmação').first().json; const ev = $('Cria evento confirmado').first().json; let id = ''; try { id = ($json.key || {}).id || ''; } catch (e) {} return [ String(c.lead_id), c.instancia || '', 'Confirmado! Nossa conversa fica para ' + c.rotulo + (ev.hangoutLink ? '. Link: ' + ev.hangoutLink : ''), id, ev.id || '', ev.hangoutLink || '' ]; })() }}"
+        }
+      },
+      "id": "a031e0e8-14f4-55aa-b702-9124215f3c0e",
+      "name": "Marca agendado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1540,
+        480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta charset=\"utf-8\"></head><body style=\"font-family:sans-serif;padding:32px;max-width:520px;margin:auto\"><h2>✅ Reunião confirmada</h2><p>{{ $('Monta confirmação').first().json.empresa }}, {{ $('Monta confirmação').first().json.rotulo }}. O lead já recebeu a confirmação e o evento está na agenda.</p></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "afee75ce-aba0-5e31-97b0-5ca47b02dd6f",
+      "name": "Página: confirmado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta charset=\"utf-8\"></head><body style=\"font-family:sans-serif;padding:32px;max-width:520px;margin:auto\"><h2>Não foi possível confirmar</h2><p>{{ $json.ja_agendado ? 'Essa reunião já estava confirmada.' : ($json.agenda_id ? 'O horário já passou. Combine um novo horário direto com o lead no WhatsApp.' : 'Este número não tem agenda configurada.') }}</p></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "20e82baf-2eb4-55ec-bdd8-db391129e43c",
+      "name": "Página: não confirmou",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sdr_leads\n   SET ia_pausada = false,\n       status = CASE WHEN status = 'humano' THEN 'respondeu' ELSE status END,\n       atualizado_em = now()\n WHERE id = $1::bigint RETURNING id, coalesce(nome_empresa, nome_contato, 'Lead') AS empresa;",
+        "options": {
+          "queryReplacement": "={{ [ String($json.lead.id) ] }}"
+        }
+      },
+      "id": "7b83b974-d621-5f1e-8c1b-ff01af967982",
+      "name": "Reativa IA",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        660,
+        820
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "",
+          "name": "Postgres Weap SDR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta charset=\"utf-8\"></head><body style=\"font-family:sans-serif;padding:32px;max-width:520px;margin:auto\"><h2>🤖 IA reativada</h2><p>O assistente voltou a responder {{ $json.empresa }}.</p></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "370461be-0fe0-58cd-ad1b-25c49b4f48d4",
+      "name": "Página: IA reativada",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta charset=\"utf-8\"></head><body style=\"font-family:sans-serif;padding:32px;max-width:520px;margin:auto\"><h2>Link inválido</h2><p>Esse link não é válido ou já foi substituído por um mais novo.</p></body></html>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "c66afabb-014e-5aef-a367-8ad8500d3d5f",
+      "name": "Página: link inválido",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Agente Weap no WhatsApp\nAtende os 5 números ao mesmo tempo. Cada instância da Evolution manda o evento MESSAGES_UPSERT para o webhook **weap-agente** (URL de produção).\n\n- Números de prospecção: só responde quem está na tabela sdr_leads (quem recebeu disparo).\n- Número de tráfego: responde qualquer pessoa.\n- Se o responsável digitar no celular numa conversa ativa, a IA para de responder aquele contato.\n- Configuração fica no banco (sdr_config, sdr_instancias, sdr_nichos, sdr_midias).",
+        "height": 300,
+        "width": 620,
+        "color": 4
+      },
+      "id": "e4c58431-8f57-5ada-8aad-a98d97fe21bc",
+      "name": "Nota: agente",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Links que chegam para o responsável\n- **confirmar**: cria o evento na agenda com Google Meet e manda a confirmação para o lead.\n- **retomar**: a IA volta a responder um contato que foi passado para humano.",
+        "height": 180,
+        "width": 620,
+        "color": 5
+      },
+      "id": "e44647cb-3b52-59f2-8862-f5d88cc07080",
+      "name": "Nota: links",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Recebe mensagem": {
+      "main": [
+        [
+          {
+            "node": "Normaliza mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza mensagem": {
+      "main": [
+        [
+          {
+            "node": "Escrita no celular?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escrita no celular?": {
+      "main": [
+        [
+          {
+            "node": "Espera 5s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registra mensagem do lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Espera 5s": {
+      "main": [
+        [
+          {
+            "node": "Pausa IA se foi humano",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registra mensagem do lead": {
+      "main": [
+        [
+          {
+            "node": "IA pode responder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA pode responder?": {
+      "main": [
+        [
+          {
+            "node": "Espera juntar mensagens",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Espera juntar mensagens": {
+      "main": [
+        [
+          {
+            "node": "Monta contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta contexto": {
+      "main": [
+        [
+          {
+            "node": "É a última mensagem?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É a última mensagem?": {
+      "main": [
+        [
+          {
+            "node": "Tem agenda?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem agenda?": {
+      "main": [
+        [
+          {
+            "node": "Busca compromissos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepara prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca compromissos": {
+      "main": [
+        [
+          {
+            "node": "Prepara prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepara prompt": {
+      "main": [
+        [
+          {
+            "node": "Agente IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente IA": {
+      "main": [
+        [
+          {
+            "node": "Valida decisão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valida decisão": {
+      "main": [
+        [
+          {
+            "node": "Marcar sozinha?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar sozinha?": {
+      "main": [
+        [
+          {
+            "node": "Cria evento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepara envio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria evento": {
+      "main": [
+        [
+          {
+            "node": "Prepara envio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepara envio": {
+      "main": [
+        [
+          {
+            "node": "Tem mídia?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem mídia?": {
+      "main": [
+        [
+          {
+            "node": "Envia mídia",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tem texto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia mídia": {
+      "main": [
+        [
+          {
+            "node": "Tem texto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem texto?": {
+      "main": [
+        [
+          {
+            "node": "Envia resposta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registra resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia resposta": {
+      "main": [
+        [
+          {
+            "node": "Registra resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registra resposta": {
+      "main": [
+        [
+          {
+            "node": "Avisar responsável?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avisar responsável?": {
+      "main": [
+        [
+          {
+            "node": "Avisa responsável",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Link do responsável": {
+      "main": [
+        [
+          {
+            "node": "Valida link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valida link": {
+      "main": [
+        [
+          {
+            "node": "Qual ação?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qual ação?": {
+      "main": [
+        [
+          {
+            "node": "Monta confirmação",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reativa IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Página: link inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta confirmação": {
+      "main": [
+        [
+          {
+            "node": "Pode confirmar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pode confirmar?": {
+      "main": [
+        [
+          {
+            "node": "Cria evento confirmado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Página: não confirmou",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria evento confirmado": {
+      "main": [
+        [
+          {
+            "node": "Confirma para o lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirma para o lead": {
+      "main": [
+        [
+          {
+            "node": "Marca agendado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marca agendado": {
+      "main": [
+        [
+          {
+            "node": "Página: confirmado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reativa IA": {
+      "main": [
+        [
+          {
+            "node": "Página: IA reativada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveDataSuccessExecution": "all"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
