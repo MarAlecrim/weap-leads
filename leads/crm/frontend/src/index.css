@@ -77,6 +77,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -120,5 +121,11 @@
   button,
   [role="button"] {
     cursor: pointer;
+  }
+  /* Lista aberta dos selects nativos (o navegador não herda o tema escuro sozinho) */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
   }
 }
