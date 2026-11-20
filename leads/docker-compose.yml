@@ -2,6 +2,7 @@
 services:
   db:
     image: postgres:16
+    shm_size: 1g
     restart: unless-stopped
     environment:
       POSTGRES_DB: leads
