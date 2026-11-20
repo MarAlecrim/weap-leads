@@ -16,7 +16,7 @@ Decisor por regra: 1 sócio = ele; vários = sócio-administrador; senão "confi
 
 ## Stack
 
-CRM novo em Python FastAPI (backend) + React (frontend), a partir do modelo do leads-filter-fullstack, em `leads/crm/`. A tela PHP fica no ar até o CRM cobrir tudo.
+CRM novo em Python FastAPI (backend) + React (frontend), a partir do modelo do leads-filter-fullstack, em `leads/crm/`. Ele substitui a tela PHP no mesmo endereço leads.weap.com.br (decisão do Gab, 20/11/2026: uma interface só).
 
 ## Fases
 

@@ -13,22 +13,7 @@ services:
       - dados:/var/lib/postgresql/data
       - ./banco/01-estrutura.sql:/docker-entrypoint-initdb.d/01-estrutura.sql:ro
 
-  app:
-    build: ./app
-    restart: unless-stopped
-    depends_on: [db]
-    environment:
-      DB_HOST: db
-      DB_NAME: leads
-      DB_USER: leads
-      DB_PASSWORD: ${DB_PASSWORD}
-      AGENTE_DB_HOST: ${AGENTE_DB_HOST:-}
-      AGENTE_DB_PORT: ${AGENTE_DB_PORT:-5432}
-      AGENTE_DB_NAME: ${AGENTE_DB_NAME:-weap_sdr}
-      AGENTE_DB_USER: ${AGENTE_DB_USER:-}
-      AGENTE_DB_PASSWORD: ${AGENTE_DB_PASSWORD:-}
-
-  # CRM novo (FastAPI + React), em crm.weap.com.br. Código em ./crm (pasta crm/ do repositório).
+  # CRM (FastAPI + React) em leads.weap.com.br. Código em ./crm. A tela PHP antiga (./app) saiu do ar.
   api:
     build:
       context: ./crm
@@ -39,7 +24,7 @@ services:
     environment:
       PROJECT_NAME: Weap Leads
       ENVIRONMENT: production
-      FRONTEND_HOST: https://${DOMINIO_CRM:-crm.weap.com.br}
+      FRONTEND_HOST: https://${DOMINIO:-leads.weap.com.br}
       SECRET_KEY: ${CRM_SECRET_KEY:?Falta CRM_SECRET_KEY no .env}
       FIRST_SUPERUSER: ${CRM_ADMIN_EMAIL:?Falta CRM_ADMIN_EMAIL no .env}
       FIRST_SUPERUSER_PASSWORD: ${CRM_ADMIN_SENHA:?Falta CRM_ADMIN_SENHA no .env}
@@ -60,11 +45,10 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
-    depends_on: [app, api, web]
+    depends_on: [api, web]
     ports: ["80:80", "443:443"]
     environment:
       DOMINIO: ${DOMINIO:-leads.weap.com.br}
-      DOMINIO_CRM: ${DOMINIO_CRM:-crm.weap.com.br}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy:/data
