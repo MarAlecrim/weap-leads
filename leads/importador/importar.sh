@@ -36,7 +36,7 @@ PASTA="${RECEITA_PASTA:-/tmp/receita}/$MES"
 mkdir -p "$PASTA"
 echo "Base $MES, estados $RECEITA_UFS, pasta $PASTA"
 
-ARQS="Cnaes Municipios Qualificacoes Naturezas"
+ARQS="Cnaes Municipios Qualificacoes Naturezas Simples"
 for i in 0 1 2 3 4 5 6 7 8 9; do ARQS="$ARQS Estabelecimentos$i Empresas$i Socios$i"; done
 for a in $ARQS; do
   [ -s "$PASTA/$a.zip" ] && continue
@@ -50,7 +50,7 @@ F="python3 /importador/filtro.py"
 psql -v ON_ERROR_STOP=1 <<SQL
 BEGIN;
 TRUNCATE receita.cnaes, receita.municipios, receita.qualificacoes, receita.naturezas,
-         receita.estabelecimentos, receita.empresas, receita.socios RESTART IDENTITY;
+         receita.estabelecimentos, receita.empresas, receita.socios, receita.simples RESTART IDENTITY;
 \copy receita.cnaes from program '$F cnaes $PASTA' with csv
 \copy receita.municipios from program '$F municipios $PASTA' with csv
 \copy receita.qualificacoes from program '$F qualificacoes $PASTA' with csv
@@ -58,6 +58,7 @@ TRUNCATE receita.cnaes, receita.municipios, receita.qualificacoes, receita.natur
 \copy receita.estabelecimentos from program '$F estabelecimentos $PASTA' with csv
 \copy receita.empresas (cnpj_basico, razao_social, natureza_juridica, capital_social, porte) from program '$F empresas $PASTA' with csv
 \copy receita.socios (cnpj_basico, tipo, nome, qualificacao, data_entrada, faixa_etaria) from program '$F socios $PASTA' with csv
+\copy receita.simples from program '$F simples $PASTA' with csv
 -- quantos sócios cada empresa tem (usado na nota dos leads, ver banco/05)
 DO \$\$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'receita' AND table_name = 'empresas' AND column_name = 'n_socios') THEN
@@ -68,7 +69,7 @@ DO \$\$ BEGIN
   END IF;
 END \$\$;
 COMMIT;
-ANALYZE receita.estabelecimentos; ANALYZE receita.empresas; ANALYZE receita.socios;
+ANALYZE receita.estabelecimentos; ANALYZE receita.empresas; ANALYZE receita.socios; ANALYZE receita.simples;
 TRUNCATE receita.cidades;
 INSERT INTO receita.cidades
   SELECT e.municipio, m.nome, e.uf, count(*) FROM receita.estabelecimentos e

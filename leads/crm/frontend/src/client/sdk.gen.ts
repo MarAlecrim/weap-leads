@@ -30,6 +30,8 @@ export class LeadsService {
      * @param data.bairro
      * @param data.nome
      * @param data.porte
+     * @param data.capitalMin
+     * @param data.capitalMax
      * @param data.anosMin
      * @param data.anosMax
      * @param data.celular
@@ -53,6 +55,8 @@ export class LeadsService {
                 bairro: data.bairro,
                 nome: data.nome,
                 porte: data.porte,
+                capital_min: data.capitalMin,
+                capital_max: data.capitalMax,
                 anos_min: data.anosMin,
                 anos_max: data.anosMax,
                 celular: data.celular,
@@ -358,7 +362,7 @@ export class UsersService {
     
     /**
      * Register User
-     * Create new user without the need to be logged in.
+     * Create new user without the need to be logged in (desligado no CRM: ALLOW_SIGNUP).
      * @param data The data for the request.
      * @param data.requestBody
      * @returns UserPublic Successful Response

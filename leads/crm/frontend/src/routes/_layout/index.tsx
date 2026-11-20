@@ -47,12 +47,18 @@ export const Route = createFileRoute("/_layout/")({
 })
 
 const numero = new Intl.NumberFormat("pt-BR")
+const moeda = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 0,
+})
 
 const COLUNAS = {
   decisor: "Decisor",
   bairro: "Bairro e cidade",
   whatsapp: "WhatsApp",
   porte: "Porte",
+  capital: "Capital social",
   anos: "Anos de empresa",
 } as const
 type Coluna = keyof typeof COLUNAS
@@ -251,6 +257,11 @@ function Busca() {
                   Porte
                 </TableHead>
               )}
+              {ver("capital") && (
+                <TableHead className="hidden w-32 text-right lg:table-cell">
+                  Capital
+                </TableHead>
+              )}
               {ver("anos") && (
                 <TableHead className="hidden w-20 lg:table-cell">
                   Anos
@@ -365,6 +376,11 @@ function Busca() {
                 {ver("porte") && (
                   <TableCell className="hidden truncate lg:table-cell">
                     {l.porte}
+                  </TableCell>
+                )}
+                {ver("capital") && (
+                  <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                    {moeda.format(l.capital_social)}
                   </TableCell>
                 )}
                 {ver("anos") && (

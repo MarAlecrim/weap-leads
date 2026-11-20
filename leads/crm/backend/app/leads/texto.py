@@ -10,6 +10,31 @@ PORTES = {
     "00": "Não informado",
 }
 
+# A Receita só informa micro (01), pequeno porte (03) e "demais" (05). O MEI vem do arquivo do
+# Simples, e média x grande é separada pelo capital social (a Receita não distingue).
+CAPITAL_GRANDE = 10_000_000
+FAIXAS = {
+    "mei": "MEI",
+    "me": "Microempresa",
+    "epp": "Pequeno porte",
+    "media": "Média",
+    "grande": "Grande",
+}
+
+
+def faixa(porte: str | None, mei: bool | None, capital: float | None) -> str:
+    """Código da faixa de porte usada na tela."""
+    if mei:
+        return "mei"
+    if porte == "01":
+        return "me"
+    if porte == "03":
+        return "epp"
+    if porte == "05":
+        return "grande" if (capital or 0) > CAPITAL_GRANDE else "media"
+    return ""
+
+
 NICHOS_NOME = {
     "saude": "Saúde",
     "construcao": "Construção",

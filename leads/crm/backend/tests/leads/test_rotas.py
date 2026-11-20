@@ -46,3 +46,49 @@ def test_ficha_inexistente(
         f"{settings.API_V1_STR}/leads/00000000000000", headers=superuser_token_headers
     )
     assert r.status_code == 404
+
+
+def _busca(client: TestClient, h: dict[str, str], **params: object) -> dict:
+    r = client.get(
+        f"{settings.API_V1_STR}/leads/",
+        headers=h,
+        params={"celular": False, **params},
+    )
+    assert r.status_code == 200
+    return r.json()
+
+
+def test_filtro_de_porte(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    todos = _busca(client, superuser_token_headers)["count"]
+    soma = 0
+    for faixa, nome in [
+        ("mei", "MEI"),
+        ("me", "Microempresa"),
+        ("epp", "Pequeno porte"),
+        ("media", "Média"),
+        ("grande", "Grande"),
+    ]:
+        j = _busca(client, superuser_token_headers, porte=faixa)
+        soma += j["count"]
+        assert all(x["porte"] == nome for x in j["data"])
+    # as cinco faixas cobrem a base sem repetir ninguém (fora quem não tem porte informado)
+    assert soma <= todos
+    dois = _busca(client, superuser_token_headers, porte=["mei", "grande"])["count"]
+    assert (
+        dois
+        == _busca(client, superuser_token_headers, porte="mei")["count"]
+        + _busca(client, superuser_token_headers, porte="grande")["count"]
+    )
+
+
+def test_filtro_de_capital(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    j = _busca(
+        client, superuser_token_headers, capital_min=10000, capital_max=500000
+    )
+    assert all(10000 <= x["capital_social"] <= 500000 for x in j["data"])
+    nada = _busca(client, superuser_token_headers, capital_min=10, capital_max=1)
+    assert nada["count"] == 0

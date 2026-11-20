@@ -148,7 +148,9 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     Create new user without the need to be logged in (desligado no CRM: ALLOW_SIGNUP).
     """
     if not settings.ALLOW_SIGNUP:
-        raise HTTPException(status_code=403, detail="Cadastro fechado. Peça acesso ao administrador.")
+        raise HTTPException(
+            status_code=403, detail="Cadastro fechado. Peça acesso ao administrador."
+        )
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(

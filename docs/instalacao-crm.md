@@ -110,3 +110,23 @@ Nunca rode `docker compose down -v` nem `docker volume prune`: isso apaga o banc
 | Idade | 5 | Dentro da faixa de idade dos clientes |
 
 As cidades atendidas ficam em `CIDADES_ATENDIDAS` (padrão: Londrina, Cambé, Ibiporã, Arapongas, Rolândia, Apucarana).
+
+## Atualização: MEI e capital social (20/11/2026)
+
+O filtro de porte passa a ter MEI, Microempresa, Pequeno porte, Média e Grande, e entra o filtro de capital social (mínimo e máximo). O MEI vem do arquivo Simples.zip da Receita. A Receita junta média e grande em "Demais", então a tela separa pelo capital social: até R$ 10 milhões é média, acima é grande.
+
+No servidor, depois de copiar `crm/`, `banco/06-simples-mei.sql` e `importador/` atualizados:
+
+```
+cd /opt/weap-leads && docker compose exec -T db psql -U leads -d leads -f - < banco/06-simples-mei.sql
+```
+
+```
+cd /opt/weap-leads && docker compose build importador && docker compose run --rm --entrypoint /importador/importar-simples.sh importador
+```
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
+
+Daqui pra frente a importação mensal já traz o Simples junto.

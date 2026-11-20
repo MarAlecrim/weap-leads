@@ -2,7 +2,7 @@
 """Lê os .zip da Receita (CNPJ dados abertos), filtra e devolve CSV limpo em UTF-8 para o \\copy do psql.
 
 Uso:  filtro.py <tipo> <pasta_dos_zips>
-tipo: estabelecimentos | empresas | socios | cnaes | municipios | qualificacoes | naturezas
+tipo: estabelecimentos | empresas | socios | simples | cnaes | municipios | qualificacoes | naturezas
 
 Variáveis: RECEITA_UFS="PR,SP" (padrão PR). O passo "estabelecimentos" grava basicos.txt na pasta,
 que os passos "empresas" e "socios" usam para guardar só as empresas que interessam.
@@ -12,7 +12,7 @@ import csv, io, os, sys, zipfile, glob, datetime
 TIPO, PASTA = sys.argv[1], sys.argv[2]
 UFS = {u.strip().upper() for u in os.environ.get("RECEITA_UFS", "PR").split(",") if u.strip()}
 MES = os.environ.get("RECEITA_MES", datetime.date.today().strftime("%Y-%m")) + "-01"
-PREFIXO = {"estabelecimentos": "Estabelecimentos", "empresas": "Empresas", "socios": "Socios",
+PREFIXO = {"estabelecimentos": "Estabelecimentos", "empresas": "Empresas", "socios": "Socios", "simples": "Simples",
            "cnaes": "Cnaes", "municipios": "Municipios", "qualificacoes": "Qualificacoes",
            "naturezas": "Naturezas"}[TIPO]
 out = csv.writer(sys.stdout, lineterminator="\n")
@@ -97,6 +97,14 @@ elif TIPO == "socios":
         if len(r) >= 11 and r[0] in ok:
             # r[3] (CPF/CNPJ do sócio) é ignorado de propósito
             out.writerow([r[0], r[1], limpa(r[2]), r[4], data(r[5]), r[10]])
+
+elif TIPO == "simples":
+    # cnpj_basico; opção Simples (S/N); datas; opção MEI (S/N); datas. Só quem tem opção vigente.
+    ok = basicos()
+    for r in linhas():
+        if len(r) >= 7 and r[0] in ok:
+            ok.discard(r[0])
+            out.writerow([r[0], r[1].strip().upper() == "S", r[4].strip().upper() == "S"])
 
 else:  # tabelas de apoio: código;descrição
     for r in linhas():
