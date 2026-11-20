@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { Download } from "lucide-react"
-import { useState } from "react"
+import { Columns3, Download } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { type Lead, LeadsService } from "@/client"
 import {
@@ -16,6 +16,14 @@ import { Filtros } from "@/components/Leads/Filtros"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -40,6 +48,49 @@ export const Route = createFileRoute("/_layout/")({
 
 const numero = new Intl.NumberFormat("pt-BR")
 
+const COLUNAS = {
+  decisor: "Decisor",
+  bairro: "Bairro e cidade",
+  whatsapp: "WhatsApp",
+  porte: "Porte",
+  anos: "Anos de empresa",
+} as const
+type Coluna = keyof typeof COLUNAS
+const COLUNAS_PADRAO: Coluna[] = ["decisor", "bairro", "whatsapp"]
+const CHAVE_COLUNAS = "weap-leads:colunas"
+
+function lerColunas(): Coluna[] {
+  try {
+    const salvo = JSON.parse(localStorage.getItem(CHAVE_COLUNAS) ?? "null")
+    if (Array.isArray(salvo)) {
+      return salvo.filter((c): c is Coluna => c in COLUNAS)
+    }
+  } catch {
+    // sem localStorage: usa o padrão
+  }
+  return COLUNAS_PADRAO
+}
+
+function useColunas() {
+  const [colunas, setColunas] = useState<Coluna[]>(lerColunas)
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAVE_COLUNAS, JSON.stringify(colunas))
+    } catch {
+      // ignora
+    }
+  }, [colunas])
+  const alternar = (c: Coluna, v: boolean) =>
+    setColunas((atual) =>
+      v
+        ? (Object.keys(COLUNAS) as Coluna[]).filter(
+            (k) => k === c || atual.includes(k),
+          )
+        : atual.filter((k) => k !== c),
+    )
+  return { colunas, alternar }
+}
+
 function Busca() {
   const [rascunho, setRascunho] = useState<FiltrosBusca>(filtrosPadrao)
   const [filtros, setFiltros] = useState<FiltrosBusca>(filtrosPadrao)
@@ -49,6 +100,9 @@ function Busca() {
   const [pularDisparo, setPularDisparo] = useState(true)
   const [baixando, setBaixando] = useState(false)
   const { showErrorToast } = useCustomToast()
+  const { colunas, alternar } = useColunas()
+  const ver = (c: Coluna) => colunas.includes(c)
+  const nColunas = 3 + colunas.length
 
   const { data: opcoes } = useQuery({
     queryKey: ["opcoes"],
@@ -114,6 +168,27 @@ function Busca() {
           <span className="text-sm text-muted-foreground">atualizando…</span>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Columns3 /> Colunas
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Mostrar na tabela</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {(Object.keys(COLUNAS) as Coluna[]).map((c) => (
+                <DropdownMenuCheckboxItem
+                  key={c}
+                  checked={ver(c)}
+                  onCheckedChange={(v) => alternar(c, v === true)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {COLUNAS[c]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex items-center gap-2">
             <Checkbox
               id="pular"
@@ -138,7 +213,7 @@ function Busca() {
       </div>
 
       <div className="rounded-lg border">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-10">
@@ -154,20 +229,40 @@ function Busca() {
                   }
                 />
               </TableHead>
-              <TableHead className="w-16">Nota</TableHead>
+              <TableHead className="w-20">Nota</TableHead>
               <TableHead>Empresa</TableHead>
-              <TableHead className="hidden md:table-cell">Decisor</TableHead>
-              <TableHead className="hidden lg:table-cell">Bairro</TableHead>
-              <TableHead className="hidden sm:table-cell">WhatsApp</TableHead>
-              <TableHead className="hidden lg:table-cell">Porte</TableHead>
-              <TableHead className="hidden lg:table-cell">Anos</TableHead>
+              {ver("decisor") && (
+                <TableHead className="hidden w-[18%] md:table-cell">
+                  Decisor
+                </TableHead>
+              )}
+              {ver("bairro") && (
+                <TableHead className="hidden w-[18%] lg:table-cell">
+                  Bairro
+                </TableHead>
+              )}
+              {ver("whatsapp") && (
+                <TableHead className="hidden w-40 sm:table-cell">
+                  WhatsApp
+                </TableHead>
+              )}
+              {ver("porte") && (
+                <TableHead className="hidden w-36 lg:table-cell">
+                  Porte
+                </TableHead>
+              )}
+              {ver("anos") && (
+                <TableHead className="hidden w-20 lg:table-cell">
+                  Anos
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading &&
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={nColunas}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
@@ -175,7 +270,7 @@ function Busca() {
             {!isLoading && linhas.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={nColunas}
                   className="py-10 text-center text-muted-foreground"
                 >
                   Nenhuma empresa com esses filtros.
@@ -207,15 +302,19 @@ function Busca() {
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
-                <TableCell>
+                <TableCell className="max-w-0">
                   <button
                     type="button"
-                    className="text-left font-medium hover:text-primary hover:underline"
+                    title={l.nome}
+                    className="block max-w-full truncate text-left font-medium hover:text-primary hover:underline"
                     onClick={() => setAberto(l.cnpj)}
                   >
                     {l.nome}
                   </button>
-                  <div className="text-xs text-muted-foreground">
+                  <div
+                    className="truncate text-xs text-muted-foreground"
+                    title={l.atividade ?? ""}
+                  >
                     {l.atividade}
                   </div>
                   {l.no_disparo && (
@@ -224,40 +323,55 @@ function Busca() {
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  {l.decisor || (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  {l.bairro}
-                  <div className="text-xs text-muted-foreground">
-                    {l.cidade}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden whitespace-nowrap sm:table-cell">
-                  {l.whatsapp ? (
-                    <a
-                      className="hover:text-primary hover:underline"
-                      href={`https://wa.me/55${l.whatsapp}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {l.telefone1 &&
-                      l.telefone1.replace(/\D/g, "") === l.whatsapp
-                        ? l.telefone1
-                        : l.telefone2}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">só fixo</span>
-                  )}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  {l.porte}
-                </TableCell>
-                <TableCell className="hidden lg:table-cell tabular-nums">
-                  {l.anos ?? ""}
-                </TableCell>
+                {ver("decisor") && (
+                  <TableCell
+                    className="hidden max-w-0 truncate md:table-cell"
+                    title={l.decisor ?? ""}
+                  >
+                    {l.decisor || (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                )}
+                {ver("bairro") && (
+                  <TableCell className="hidden max-w-0 lg:table-cell">
+                    <div className="truncate" title={l.bairro ?? ""}>
+                      {l.bairro}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {l.cidade}
+                    </div>
+                  </TableCell>
+                )}
+                {ver("whatsapp") && (
+                  <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                    {l.whatsapp ? (
+                      <a
+                        className="hover:text-primary hover:underline"
+                        href={`https://wa.me/55${l.whatsapp}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {l.telefone1 &&
+                        l.telefone1.replace(/\D/g, "") === l.whatsapp
+                          ? l.telefone1
+                          : l.telefone2}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">só fixo</span>
+                    )}
+                  </TableCell>
+                )}
+                {ver("porte") && (
+                  <TableCell className="hidden truncate lg:table-cell">
+                    {l.porte}
+                  </TableCell>
+                )}
+                {ver("anos") && (
+                  <TableCell className="hidden tabular-nums lg:table-cell">
+                    {l.anos ?? ""}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
