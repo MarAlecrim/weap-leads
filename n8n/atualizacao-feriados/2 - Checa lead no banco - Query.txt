@@ -1,0 +1,31 @@
+COLE NO CAMPO "Query" DO NODE "Checa lead no banco" de CADA um dos 5 disparos (apague o que tem).
+O campo "Query Parameters" continua igual.
+
+SELECT (sdr_feriado_hoje() IS NOT NULL
+        OR coalesce(bool_or(l.opt_out OR sdr_em_conversa(l.status) OR (outro.dono IS NOT NULL)), false)) AS pular,
+       -- Em feriado a linha fica para o próximo dia útil: não envia e não marca nada na planilha.
+       (sdr_feriado_hoje() IS NOT NULL
+        OR coalesce(bool_or(outro.dono IS NOT NULL AND NOT (l.opt_out OR sdr_em_conversa(l.status))), false)) AS deixar_para_dono,
+       coalesce('feriado: ' || sdr_feriado_hoje(), max(CASE WHEN l.status = 'bot' THEN 'número é robô ou atendimento automático'
+                WHEN l.opt_out THEN 'pediu para não receber'
+                WHEN sdr_em_conversa(l.status) THEN 'já está conversando (' || l.status || ')'
+                WHEN outro.dono IS NOT NULL THEN 'já é lead do número ' || outro.dono END)) AS motivo,
+       coalesce(max(l.contatos_enviados), 0) AS contatos,
+       max(l.primeira_mensagem) AS primeira_mensagem,
+       (SELECT responsavel_nome FROM sdr_instancias WHERE instancia = $2) AS responsavel
+  FROM sdr_leads l
+  -- O recontato sai do mesmo número que mandou a 1ª mensagem (o "dono" do lead).
+  -- Os outros números deixam a linha para ele. Se o dono não disparou nada nos últimos 2 dias
+  -- (workflow desligado), qualquer número pode mandar, para a fila não travar.
+  LEFT JOIN LATERAL (
+    SELECT l.instancia AS dono
+     WHERE l.contatos_enviados > 0
+       AND l.instancia IS NOT NULL
+       AND l.instancia <> $2
+       AND EXISTS (SELECT 1 FROM sdr_instancias i WHERE i.instancia = l.instancia AND i.ativo)
+       AND EXISTS (SELECT 1 FROM sdr_mensagens m
+                    WHERE m.instancia = l.instancia AND m.autor = 'disparo'
+                      AND m.criado_em > now() - interval '2 days')
+  ) outro ON true
+ WHERE l.chave = sdr_chave($1);
+
