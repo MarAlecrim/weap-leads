@@ -138,6 +138,23 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
           </div>
         </div>
         <div className="grid gap-1.5">
+          <Label>Capital social (R$)</Label>
+          <div className="flex gap-2">
+            <Input
+              inputMode="numeric"
+              placeholder="mínimo"
+              value={f.capital_min}
+              onChange={(e) => set("capital_min", e.target.value)}
+            />
+            <Input
+              inputMode="numeric"
+              placeholder="máximo"
+              value={f.capital_max}
+              onChange={(e) => set("capital_max", e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="grid gap-1.5">
           <Label htmlFor="nota_min">Nota mínima</Label>
           <Input
             id="nota_min"
@@ -149,8 +166,13 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
             onChange={(e) => set("nota_min", e.target.value)}
           />
         </div>
-        <div className="grid gap-1.5">
-          <Label>Porte</Label>
+        <div className="grid gap-1.5 sm:col-span-2">
+          <Label>
+            Porte{" "}
+            <span className="font-normal text-muted-foreground">
+              (média e grande separadas pelo capital de R$ 10 milhões)
+            </span>
+          </Label>
           <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
             {opcoes?.portes
               .filter((p) => p.id !== "00")

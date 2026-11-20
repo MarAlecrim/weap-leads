@@ -28,6 +28,7 @@ class Lead(BaseModel):
     atividade: str
     cnae: str | None
     porte: str
+    simples: bool
     capital_social: float
     anos: int | None
     bairro: str
@@ -106,6 +107,8 @@ def _filtros(
     bairro: str = "",
     nome: str = "",
     porte: list[str] | None = None,
+    capital_min: float | None = None,
+    capital_max: float | None = None,
     anos_min: int | None = None,
     anos_max: int | None = None,
     celular: bool = True,
@@ -122,6 +125,8 @@ def _filtros(
         bairro=bairro.strip(),
         nome=nome.strip(),
         porte=porte or [],
+        capital_min=capital_min,
+        capital_max=capital_max,
         anos_min=anos_min,
         anos_max=anos_max,
         celular=celular,
@@ -138,7 +143,7 @@ def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
     return Opcoes(
         nichos=[Opcao(**n) for n in repo.nichos(session)],
         cidades=[Cidade(**c) for c in repo.cidades(session)],
-        portes=[Opcao(id=k, nome=v) for k, v in texto.PORTES.items()],
+        portes=[Opcao(id=k, nome=v) for k, v in texto.FAIXAS.items()],
         ofertas=[Perfil(**p) for p in repo.perfis(session)],
         pesos=repo.PESOS,
         motivos=repo.MOTIVOS,
@@ -156,6 +161,8 @@ def buscar(
     bairro: str = "",
     nome: str = "",
     porte: Annotated[list[str] | None, Query()] = None,
+    capital_min: float | None = None,
+    capital_max: float | None = None,
     anos_min: int | None = None,
     anos_max: int | None = None,
     celular: bool = True,
@@ -174,6 +181,8 @@ def buscar(
         bairro,
         nome,
         porte,
+        capital_min,
+        capital_max,
         anos_min,
         anos_max,
         celular,

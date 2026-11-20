@@ -193,6 +193,10 @@ export const LeadSchema = {
             type: 'string',
             title: 'Porte'
         },
+        simples: {
+            type: 'boolean',
+            title: 'Simples'
+        },
         capital_social: {
             type: 'number',
             title: 'Capital Social'
@@ -272,7 +276,7 @@ export const LeadSchema = {
         }
     },
     type: 'object',
-    required: ['cnpj', 'nome', 'razao_social', 'atividade', 'cnae', 'porte', 'capital_social', 'anos', 'bairro', 'cidade', 'uf', 'endereco', 'telefone1', 'telefone2', 'whatsapp', 'email', 'decisor', 'n_socios', 'nota', 'motivos', 'no_disparo'],
+    required: ['cnpj', 'nome', 'razao_social', 'atividade', 'cnae', 'porte', 'simples', 'capital_social', 'anos', 'bairro', 'cidade', 'uf', 'endereco', 'telefone1', 'telefone2', 'whatsapp', 'email', 'decisor', 'n_socios', 'nota', 'motivos', 'no_disparo'],
     title: 'Lead'
 } as const;
 
@@ -308,6 +312,10 @@ export const LeadFichaSchema = {
         porte: {
             type: 'string',
             title: 'Porte'
+        },
+        simples: {
+            type: 'boolean',
+            title: 'Simples'
         },
         capital_social: {
             type: 'number',
@@ -395,7 +403,7 @@ export const LeadFichaSchema = {
         }
     },
     type: 'object',
-    required: ['cnpj', 'nome', 'razao_social', 'atividade', 'cnae', 'porte', 'capital_social', 'anos', 'bairro', 'cidade', 'uf', 'endereco', 'telefone1', 'telefone2', 'whatsapp', 'email', 'decisor', 'n_socios', 'nota', 'motivos', 'no_disparo', 'socios'],
+    required: ['cnpj', 'nome', 'razao_social', 'atividade', 'cnae', 'porte', 'simples', 'capital_social', 'anos', 'bairro', 'cidade', 'uf', 'endereco', 'telefone1', 'telefone2', 'whatsapp', 'email', 'decisor', 'n_socios', 'nota', 'motivos', 'no_disparo', 'socios'],
     title: 'LeadFicha'
 } as const;
 

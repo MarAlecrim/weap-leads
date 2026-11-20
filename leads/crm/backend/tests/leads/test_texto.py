@@ -43,3 +43,13 @@ def test_endereco_e_fone() -> None:
 def test_anos() -> None:
     assert texto.anos(None) is None
     assert texto.anos(date(date.today().year - 3, 1, 1)) == 3
+
+
+def test_faixa_de_porte() -> None:
+    assert texto.faixa("01", True, 5000) == "mei"
+    assert texto.faixa("01", False, 5000) == "me"
+    assert texto.faixa("03", None, 100000) == "epp"
+    assert texto.faixa("05", None, 2_000_000) == "media"
+    assert texto.faixa("05", None, 50_000_000) == "grande"
+    assert texto.faixa("05", None, None) == "media"
+    assert texto.faixa(None, None, None) == ""

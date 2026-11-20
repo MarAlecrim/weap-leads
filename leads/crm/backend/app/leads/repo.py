@@ -63,6 +63,8 @@ class Filtros:
     bairro: str = ""
     nome: str = ""
     porte: list[str] = field(default_factory=list)
+    capital_min: float | None = None
+    capital_max: float | None = None
     anos_min: int | None = None
     anos_max: int | None = None
     celular: bool = True
@@ -100,10 +102,24 @@ def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
             "(unaccent(e.nome_fantasia) ILIKE unaccent(:nome) OR unaccent(emp.razao_social) ILIKE unaccent(:nome))"
         )
         p["nome"] = f"%{f.nome}%"
-    portes = [x for x in f.porte if x in texto.PORTES]
-    if portes:
-        w.append("emp.porte = ANY(:portes)")
-        p["portes"] = portes
+    faixas = {
+        "mei": "coalesce(si.mei, false)",
+        "me": "(emp.porte = '01' AND NOT coalesce(si.mei, false))",
+        "epp": "emp.porte = '03'",
+        "media": "(emp.porte = '05' AND coalesce(emp.capital_social, 0) <= :cap_grande)",
+        "grande": "(emp.porte = '05' AND emp.capital_social > :cap_grande)",
+    }
+    escolhidas = [faixas[x] for x in dict.fromkeys(f.porte) if x in faixas]
+    if escolhidas:
+        w.append("(" + " OR ".join(escolhidas) + ")")
+        if any(x in ("media", "grande") for x in f.porte):
+            p["cap_grande"] = texto.CAPITAL_GRANDE
+    if f.capital_min is not None:
+        w.append("coalesce(emp.capital_social, 0) >= :cmin")
+        p["cmin"] = f.capital_min
+    if f.capital_max is not None:
+        w.append("coalesce(emp.capital_social, 0) <= :cmax")
+        p["cmax"] = f.capital_max
     if f.anos_min is not None:
         w.append("e.data_abertura <= current_date - make_interval(years => :amin)")
         p["amin"] = max(0, f.anos_min)
@@ -143,6 +159,7 @@ SELECT = f"""
   SELECT e.cnpj, e.cnpj_basico,
          coalesce(nullif(e.nome_fantasia, ''), emp.razao_social) AS nome,
          emp.razao_social, emp.porte, emp.capital_social, coalesce(emp.n_socios, 0) AS n_socios,
+         coalesce(si.mei, false) AS mei, coalesce(si.simples, false) AS simples,
          e.data_abertura, e.cnae_principal, c.descricao AS atividade,
          e.logradouro, e.numero, e.complemento, e.bairro, e.cep,
          cid.nome AS cidade, e.uf, e.telefone1, e.telefone2, e.email,
@@ -152,6 +169,7 @@ SELECT = f"""
          {_nota_sql()}
     FROM receita.estabelecimentos e
     JOIN receita.empresas emp ON emp.cnpj_basico = e.cnpj_basico
+    LEFT JOIN receita.simples si ON si.cnpj_basico = e.cnpj_basico
     LEFT JOIN receita.cnaes c ON c.codigo = e.cnae_principal
     LEFT JOIN receita.cidades cid ON cid.municipio = e.municipio
     LEFT JOIN receita.perfil_oferta pf ON pf.oferta = :oferta
@@ -178,7 +196,10 @@ def _linha(r: dict[str, Any], no_disparo: set[str]) -> dict[str, Any]:
         "razao_social": texto.nome_bonito(r["razao_social"]),
         "atividade": r["atividade"] or "",
         "cnae": r["cnae_principal"],
-        "porte": texto.PORTES.get(r["porte"] or "00", "Não informado"),
+        "porte": texto.FAIXAS.get(
+            texto.faixa(r["porte"], r["mei"], r["capital_social"]), "Não informado"
+        ),
+        "simples": bool(r["simples"]),
         "capital_social": float(r["capital_social"] or 0),
         "anos": texto.anos(r["data_abertura"]),
         "bairro": texto.nome_bonito(r["bairro"]),
@@ -335,7 +356,9 @@ def clientes(s: Session) -> list[dict[str, Any]]:
         text(
             """SELECT c.nome, c.ofertas, c.ativo, c.valor_cents, c.cnpj,
                       pc.cnae_descricao, pc.porte, pc.capital_social, pc.anos, pc.cidade, pc.uf,
-                      pc.socios, pc.achou_na_receita
+                      pc.socios, pc.achou_na_receita,
+                      coalesce((SELECT si.mei FROM receita.simples si
+                                 WHERE si.cnpj_basico = left(c.cnpj, 8)), false) AS mei
                  FROM receita.clientes_weap c
                  JOIN receita.perfil_clientes pc ON pc.nome = c.nome
                 ORDER BY c.ativo DESC, c.nome"""
@@ -349,7 +372,9 @@ def clientes(s: Session) -> list[dict[str, Any]]:
             "valor": (r["valor_cents"] or 0) / 100,
             "cnpj": r["cnpj"],
             "atividade": r["cnae_descricao"] or "",
-            "porte": texto.PORTES.get(r["porte"] or "00", "")
+            "porte": texto.FAIXAS.get(
+                texto.faixa(r["porte"], r["mei"], r["capital_social"]), ""
+            )
             if r["achou_na_receita"]
             else "",
             "anos": r["anos"],

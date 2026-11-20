@@ -21,7 +21,7 @@ CRM novo em Python FastAPI (backend) + React (frontend), a partir do modelo do l
 ## Fases
 
 0. Fechar o que está no ar (Gab).
-1. Ligar weap_sdr pela rede interna, importar Simples/MEI, cadastrar clientes atuais, nota de semelhança por oferta.
+1. Ligar weap_sdr pela rede interna, importar Simples/MEI (feito em 20/11: filtro MEI/ME/EPP/média/grande + capital social), cadastrar clientes atuais, nota de semelhança por oferta.
 2. Mini CRM (Novo, No disparo, Respondeu, Interessado, Reunião, Proposta, Fechado, Perdido; responsável; notas; próxima ação) e "Mandar para o disparo" (checa WhatsApp na Evolution, fila única com rodízio dos 5 números).
 3. Caixa única do WhatsApp: fila "Precisa de você", resumo e intenção por IA, responder pela tela.
 4. Modelo de ML.

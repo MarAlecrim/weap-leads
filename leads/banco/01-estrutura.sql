@@ -21,6 +21,13 @@ CREATE TABLE IF NOT EXISTS receita.empresas (
   porte             text   -- 00 não informado, 01 micro, 03 pequeno porte, 05 demais
 );
 
+-- Opção pelo Simples Nacional e pelo MEI (arquivo Simples.zip da Receita)
+CREATE TABLE IF NOT EXISTS receita.simples (
+  cnpj_basico text PRIMARY KEY,
+  simples     boolean NOT NULL,
+  mei         boolean NOT NULL
+);
+
 -- Estabelecimento (cada CNPJ completo). Só entram ATIVOS dos estados escolhidos.
 CREATE TABLE IF NOT EXISTS receita.estabelecimentos (
   cnpj            text PRIMARY KEY,           -- 14 dígitos

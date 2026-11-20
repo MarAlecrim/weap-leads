@@ -40,6 +40,7 @@ export type Lead = {
     atividade: string;
     cnae: (string | null);
     porte: string;
+    simples: boolean;
     capital_social: number;
     anos: (number | null);
     bairro: string;
@@ -64,6 +65,7 @@ export type LeadFicha = {
     atividade: string;
     cnae: (string | null);
     porte: string;
+    simples: boolean;
     capital_social: number;
     anos: (number | null);
     bairro: string;
@@ -212,6 +214,8 @@ export type LeadsBuscarData = {
     anosMax?: (number | null);
     anosMin?: (number | null);
     bairro?: string;
+    capitalMax?: (number | null);
+    capitalMin?: (number | null);
     celular?: boolean;
     cidade?: string;
     email?: boolean;

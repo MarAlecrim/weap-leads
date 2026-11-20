@@ -8,6 +8,8 @@ export type FiltrosBusca = {
   bairro: string
   nome: string
   porte: string[]
+  capital_min: string
+  capital_max: string
   anos_min: string
   anos_max: string
   celular: boolean
@@ -25,6 +27,8 @@ export const filtrosPadrao: FiltrosBusca = {
   bairro: "",
   nome: "",
   porte: [],
+  capital_min: "",
+  capital_max: "",
   anos_min: "",
   anos_max: "",
   celular: true,
@@ -32,6 +36,14 @@ export const filtrosPadrao: FiltrosBusca = {
   socio: false,
   nota_min: "",
   esconder_disparo: false,
+}
+
+/** "50.000" ou "50000,50" vira número; vazio vira undefined. */
+export function reais(v: string): number | undefined {
+  const limpo = v.replace(/[^\d,]/g, "").replace(",", ".")
+  if (!limpo) return undefined
+  const n = Number(limpo)
+  return Number.isFinite(n) ? n : undefined
 }
 
 /** Converte os filtros da tela para os parâmetros da API (sem campos vazios). */
@@ -44,6 +56,8 @@ export function paraApi(f: FiltrosBusca) {
     bairro: f.bairro || undefined,
     nome: f.nome || undefined,
     porte: f.porte.length ? f.porte : undefined,
+    capitalMin: reais(f.capital_min),
+    capitalMax: reais(f.capital_max),
     anosMin: f.anos_min === "" ? undefined : Number(f.anos_min),
     anosMax: f.anos_max === "" ? undefined : Number(f.anos_max),
     celular: f.celular,
@@ -63,6 +77,8 @@ export async function baixarPlanilha(
   const token = localStorage.getItem("access_token") || ""
   const filtros: Record<string, unknown> = {
     ...f,
+    capital_min: reais(f.capital_min) ?? null,
+    capital_max: reais(f.capital_max) ?? null,
     anos_min: f.anos_min === "" ? null : Number(f.anos_min),
     anos_max: f.anos_max === "" ? null : Number(f.anos_max),
     nota_min: f.nota_min === "" ? null : Number(f.nota_min),
