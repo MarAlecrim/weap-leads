@@ -1,31 +1,9 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
-import { Columns3, Download } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { useState } from "react"
 
-import { type Lead, LeadsService } from "@/client"
-import {
-  baixarPlanilha,
-  corDaNota,
-  type FiltrosBusca,
-  filtrosPadrao,
-  paraApi,
-} from "@/components/Leads/api"
-import { Ficha } from "@/components/Leads/Ficha"
-import { Filtros } from "@/components/Leads/Filtros"
-import { MandarDisparo } from "@/components/Leads/MandarDisparo"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Label } from "@/components/ui/label"
+import { type Dia, type Painel as PainelDados, PainelService } from "@/client"
+import { dias, quando, reais } from "@/components/Funil/util"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -35,415 +13,397 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import useCustomToast from "@/hooks/useCustomToast"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_layout/")({
-  component: Busca,
-  head: () => ({ meta: [{ title: "Busca de leads - Weap" }] }),
+  component: Painel,
+  head: () => ({ meta: [{ title: "Painel - Weap" }] }),
 })
 
 const numero = new Intl.NumberFormat("pt-BR")
-const moeda = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  maximumFractionDigits: 0,
-})
+const pct = (a: number, b: number) =>
+  b ? `${Math.round((a / b) * 100)}%` : "—"
 
-const COLUNAS = {
-  decisor: "Decisor",
-  bairro: "Bairro e cidade",
-  whatsapp: "WhatsApp",
-  porte: "Porte",
-  capital: "Capital social",
-  anos: "Anos de empresa",
-} as const
-type Coluna = keyof typeof COLUNAS
-const COLUNAS_PADRAO: Coluna[] = ["decisor", "bairro", "whatsapp"]
-const CHAVE_COLUNAS = "weap-leads:colunas"
-
-function lerColunas(): Coluna[] {
-  try {
-    const salvo = JSON.parse(localStorage.getItem(CHAVE_COLUNAS) ?? "null")
-    if (Array.isArray(salvo)) {
-      return salvo.filter((c): c is Coluna => c in COLUNAS)
-    }
-  } catch {
-    // sem localStorage: usa o padrão
-  }
-  return COLUNAS_PADRAO
-}
-
-function useColunas() {
-  const [colunas, setColunas] = useState<Coluna[]>(lerColunas)
-  useEffect(() => {
-    try {
-      localStorage.setItem(CHAVE_COLUNAS, JSON.stringify(colunas))
-    } catch {
-      // ignora
-    }
-  }, [colunas])
-  const alternar = (c: Coluna, v: boolean) =>
-    setColunas((atual) =>
-      v
-        ? (Object.keys(COLUNAS) as Coluna[]).filter(
-            (k) => k === c || atual.includes(k),
-          )
-        : atual.filter((k) => k !== c),
-    )
-  return { colunas, alternar }
-}
-
-function Busca() {
-  const [rascunho, setRascunho] = useState<FiltrosBusca>(filtrosPadrao)
-  const [filtros, setFiltros] = useState<FiltrosBusca>(filtrosPadrao)
-  const [pagina, setPagina] = useState(1)
-  const [marcados, setMarcados] = useState<string[]>([])
-  const [aberto, setAberto] = useState<string | null>(null)
-  const [pularDisparo, setPularDisparo] = useState(true)
-  const [baixando, setBaixando] = useState(false)
-  const { showErrorToast } = useCustomToast()
-  const { colunas, alternar } = useColunas()
-  const ver = (c: Coluna) => colunas.includes(c)
-  const nColunas = 3 + colunas.length
-
-  const { data: opcoes } = useQuery({
-    queryKey: ["opcoes"],
-    queryFn: () => LeadsService.opcoes(),
-    staleTime: Number.POSITIVE_INFINITY,
-  })
-
-  const { data, isFetching, isLoading } = useQuery({
-    queryKey: ["leads", filtros, pagina],
-    queryFn: () => LeadsService.buscar({ ...paraApi(filtros), pagina }),
-    placeholderData: keepPreviousData,
-  })
-
-  const { data: fila } = useQuery({
-    queryKey: ["fila"],
-    queryFn: () => LeadsService.fila(),
+function Painel() {
+  const { data: p, isLoading } = useQuery({
+    queryKey: ["painel"],
+    queryFn: () => PainelService.painel(),
     refetchInterval: 60_000,
   })
-
-  const total = data?.count ?? 0
-  const paginas = Math.max(1, Math.ceil(total / (data?.por_pagina ?? 50)))
-  const linhas = data?.data ?? []
-  const todosMarcados =
-    linhas.length > 0 && linhas.every((l) => marcados.includes(l.cnpj))
-
-  const buscar = () => {
-    setFiltros(rascunho)
-    setPagina(1)
-    setMarcados([])
-  }
-
-  const marcar = (cnpj: string, v: boolean) =>
-    setMarcados((m) => (v ? [...m, cnpj] : m.filter((x) => x !== cnpj)))
-
-  const baixar = async (so_marcados: boolean) => {
-    setBaixando(true)
-    try {
-      await baixarPlanilha(filtros, so_marcados ? marcados : [], pularDisparo)
-    } catch (e) {
-      showErrorToast((e as Error).message)
-    } finally {
-      setBaixando(false)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Busca de leads</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
         <p className="text-muted-foreground">
-          Empresas ativas da Receita, da nota mais alta para a mais baixa. A
-          nota mostra o quanto a empresa se parece com quem já é cliente da
-          Weap.
+          Como está o disparo e o funil. Atualiza sozinho a cada minuto.
         </p>
       </div>
 
-      <Filtros
-        opcoes={opcoes}
-        valor={rascunho}
-        onChange={setRascunho}
-        onBuscar={buscar}
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <strong>
-          {isLoading ? "Buscando…" : `${numero.format(total)} empresas`}
-        </strong>
-        {isFetching && !isLoading && (
-          <span className="text-sm text-muted-foreground">atualizando…</span>
-        )}
-        {fila && (
-          <span className="text-sm text-muted-foreground">
-            Fila do disparo: {numero.format(fila.aguardando)} aguardando ·{" "}
-            {numero.format(fila.enviados_hoje)} enviados hoje
-          </span>
-        )}
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Columns3 /> Colunas
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mostrar na tabela</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {(Object.keys(COLUNAS) as Coluna[]).map((c) => (
-                <DropdownMenuCheckboxItem
-                  key={c}
-                  checked={ver(c)}
-                  onCheckedChange={(v) => alternar(c, v === true)}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  {COLUNAS[c]}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="pular"
-              checked={pularDisparo}
-              onCheckedChange={(v) => setPularDisparo(v === true)}
-            />
-            <Label htmlFor="pular" className="font-normal">
-              Pular quem já está no disparo
-            </Label>
+      {isLoading || !p ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <Numeros p={p} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Bloco titulo="Funil por etapa" link="/funil">
+              <Etapas p={p} />
+            </Bloco>
+            <Bloco titulo="Disparo nos últimos 14 dias">
+              {p.por_dia ? (
+                <PorDia dias={p.por_dia} />
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  O banco do agente não respondeu agora.
+                </p>
+              )}
+            </Bloco>
           </div>
-          <Button
-            variant="outline"
-            disabled={!marcados.length || baixando}
-            onClick={() => baixar(true)}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Bloco titulo="Por número">
+              <PorNumero p={p} />
+            </Bloco>
+            <Bloco
+              titulo={`Precisa de atenção (${p.atencao_total})`}
+              link="/funil"
+            >
+              <Atencao p={p} />
+            </Bloco>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function Bloco({
+  titulo,
+  link,
+  children,
+}: {
+  titulo: string
+  link?: "/funil"
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-lg border p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="font-semibold">{titulo}</h2>
+        {link && (
+          <Link to={link} className="text-primary text-sm hover:underline">
+            Abrir o funil
+          </Link>
+        )}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function Numero({
+  rotulo,
+  valor,
+  extra,
+}: {
+  rotulo: string
+  valor: string
+  extra?: string
+}) {
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="text-muted-foreground text-sm">{rotulo}</div>
+      <div className="mt-1 font-semibold text-2xl tabular-nums">{valor}</div>
+      {extra && (
+        <div className="mt-0.5 text-muted-foreground text-xs">{extra}</div>
+      )}
+    </div>
+  )
+}
+
+function Numeros({ p }: { p: PainelDados }) {
+  const n = (v: number | null | undefined) =>
+    v == null ? "—" : numero.format(v)
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Numero
+        rotulo="Na fila do disparo"
+        valor={n(p.na_fila)}
+        extra={
+          p.enviados_hoje != null
+            ? `${n(p.enviados_hoje)} receberam a 1ª mensagem hoje`
+            : undefined
+        }
+      />
+      <Numero rotulo="Contatados" valor={n(p.contatados)} extra="no total" />
+      <Numero
+        rotulo="Responderam"
+        valor={n(p.responderam)}
+        extra={`${pct(p.responderam, p.contatados)} dos contatados`}
+      />
+      <Numero
+        rotulo="Interessados e reuniões"
+        valor={n(p.interessados + p.reunioes)}
+        extra={`${n(p.reunioes)} com reunião marcada`}
+      />
+      <Numero
+        rotulo="Propostas em aberto"
+        valor={n(p.abertos)}
+        extra={p.abertos_valor_cents ? reais(p.abertos_valor_cents) : undefined}
+      />
+      <Numero
+        rotulo="Ganhos"
+        valor={n(p.ganhos)}
+        extra={p.ganhos_valor_cents ? reais(p.ganhos_valor_cents) : undefined}
+      />
+      <Numero rotulo="Clientes atuais" valor={n(p.clientes_atuais)} />
+      <Numero
+        rotulo="Precisam de atenção"
+        valor={n(p.atencao_total)}
+        extra="sem resposta, ação vencida ou com pessoa"
+      />
+    </div>
+  )
+}
+
+function Etapas({ p }: { p: PainelDados }) {
+  const max = Math.max(1, ...p.etapas.map((e) => e.total))
+  return (
+    <ul className="grid gap-1.5">
+      {p.etapas.map((e) => (
+        <li
+          key={e.etapa}
+          className="grid grid-cols-[8.5rem_1fr_3.5rem] items-center gap-2 text-sm"
+          title={`${e.nome}: ${numero.format(e.total)}${e.valor_cents ? ` · ${reais(e.valor_cents)}` : ""}`}
+        >
+          <span className="truncate">{e.nome}</span>
+          <span className="h-4 rounded-r-sm bg-muted">
+            <span
+              className="block h-full rounded-r-[4px] bg-primary"
+              style={{ width: `${(e.total / max) * 100}%` }}
+            />
+          </span>
+          <span className="text-right tabular-nums">
+            {numero.format(e.total)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const diaCurto = (iso: string) => {
+  const [, m, d] = iso.split("-")
+  return `${d}/${m}`
+}
+
+function PorDia({ dias: serie }: { dias: Dia[] }) {
+  const [foco, setFoco] = useState<number | null>(null)
+  const max = Math.max(
+    1,
+    ...serie.map((d) => Math.max(d.enviados, d.respostas)),
+  )
+  const altura = 160
+  const total = serie.reduce(
+    (a, d) => ({ e: a.e + d.enviados, r: a.r + d.respostas }),
+    { e: 0, r: 0 },
+  )
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap gap-4 text-sm">
+        <Legenda cor="var(--serie-envio)" texto="1ª mensagem enviada" />
+        <Legenda cor="var(--serie-resposta)" texto="Respostas" />
+        <span className="ml-auto text-muted-foreground">
+          {numero.format(total.e)} enviados · {numero.format(total.r)} respostas
+        </span>
+      </div>
+      <div className="relative">
+        <ul
+          aria-label="Envios e respostas por dia"
+          className="grid items-end gap-1 border-b"
+          style={{
+            gridTemplateColumns: `repeat(${serie.length}, 1fr)`,
+            height: altura,
+          }}
+          onMouseLeave={() => setFoco(null)}
+        >
+          {serie.map((d, i) => (
+            <li
+              key={d.dia}
+              aria-label={`${d.dia}: ${d.enviados} enviados, ${d.respostas} respostas`}
+              className={cn(
+                "flex h-full items-end justify-center gap-[2px] rounded-sm",
+                foco === i && "bg-muted",
+              )}
+              onMouseEnter={() => setFoco(i)}
+            >
+              <span
+                className="w-[38%] rounded-t-[4px]"
+                style={{
+                  height: `${(d.enviados / max) * 100}%`,
+                  background: "var(--serie-envio)",
+                  minHeight: d.enviados ? 2 : 0,
+                }}
+              />
+              <span
+                className="w-[38%] rounded-t-[4px]"
+                style={{
+                  height: `${(d.respostas / max) * 100}%`,
+                  background: "var(--serie-resposta)",
+                  minHeight: d.respostas ? 2 : 0,
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+        {foco != null && (
+          <div
+            className="pointer-events-none absolute top-0 z-10 rounded-md border bg-popover px-3 py-2 text-popover-foreground text-xs shadow-md"
+            style={{
+              left: `${((foco + 0.5) / serie.length) * 100}%`,
+              transform:
+                foco > serie.length / 2
+                  ? "translateX(calc(-100% - 8px))"
+                  : "translateX(8px)",
+            }}
           >
-            <Download /> Planilha dos marcados ({marcados.length})
-          </Button>
-          <Button
-            variant="outline"
-            disabled={!total || baixando}
-            onClick={() => baixar(false)}
-          >
-            <Download /> Planilha de todos (até 3.000)
-          </Button>
-          <MandarDisparo
-            filtros={filtros}
-            marcados={marcados}
-            total={total}
-            onFeito={() => setMarcados([])}
-          />
+            <div className="font-semibold">{diaCurto(serie[foco].dia)}</div>
+            <div>
+              {numero.format(serie[foco].enviados)} receberam a 1ª mensagem
+            </div>
+            <div>{numero.format(serie[foco].respostas)} responderam</div>
+          </div>
+        )}
+        <div
+          className="mt-1 grid text-center text-muted-foreground text-xs"
+          style={{ gridTemplateColumns: `repeat(${serie.length}, 1fr)` }}
+        >
+          {serie.map((d, i) => (
+            <span key={d.dia}>
+              {i % 2 === serie.length % 2 ? "" : diaCurto(d.dia)}
+            </span>
+          ))}
         </div>
       </div>
-
-      <div className="rounded-lg border">
-        <Table className="table-fixed">
+      <details className="text-sm">
+        <summary className="cursor-pointer text-muted-foreground">
+          Ver em tabela
+        </summary>
+        <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-10">
-                <Checkbox
-                  aria-label="Marcar todos da página"
-                  checked={todosMarcados}
-                  onCheckedChange={(v) =>
-                    setMarcados((m) =>
-                      v === true
-                        ? [...new Set([...m, ...linhas.map((l) => l.cnpj)])]
-                        : m.filter((x) => !linhas.some((l) => l.cnpj === x)),
-                    )
-                  }
-                />
-              </TableHead>
-              <TableHead className="w-20">Nota</TableHead>
-              <TableHead>Empresa</TableHead>
-              {ver("decisor") && (
-                <TableHead className="hidden w-[18%] md:table-cell">
-                  Decisor
-                </TableHead>
-              )}
-              {ver("bairro") && (
-                <TableHead className="hidden w-[18%] lg:table-cell">
-                  Bairro
-                </TableHead>
-              )}
-              {ver("whatsapp") && (
-                <TableHead className="hidden w-40 sm:table-cell">
-                  WhatsApp
-                </TableHead>
-              )}
-              {ver("porte") && (
-                <TableHead className="hidden w-36 lg:table-cell">
-                  Porte
-                </TableHead>
-              )}
-              {ver("capital") && (
-                <TableHead className="hidden w-32 text-right lg:table-cell">
-                  Capital
-                </TableHead>
-              )}
-              {ver("anos") && (
-                <TableHead className="hidden w-20 lg:table-cell">
-                  Anos
-                </TableHead>
-              )}
+            <TableRow>
+              <TableHead>Dia</TableHead>
+              <TableHead className="text-right">1ª mensagem</TableHead>
+              <TableHead className="text-right">Respostas</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading &&
-              Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={nColunas}>
-                    <Skeleton className="h-6 w-full" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            {!isLoading && linhas.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={nColunas}
-                  className="py-10 text-center text-muted-foreground"
-                >
-                  Nenhuma empresa com esses filtros.
+            {[...serie].reverse().map((d) => (
+              <TableRow key={d.dia}>
+                <TableCell>{diaCurto(d.dia)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {numero.format(d.enviados)}
                 </TableCell>
-              </TableRow>
-            )}
-            {linhas.map((l: Lead) => (
-              <TableRow key={l.cnpj}>
-                <TableCell>
-                  <Checkbox
-                    aria-label={`Marcar ${l.nome}`}
-                    checked={marcados.includes(l.cnpj)}
-                    onCheckedChange={(v) => marcar(l.cnpj, v === true)}
-                  />
+                <TableCell className="text-right tabular-nums">
+                  {numero.format(d.respostas)}
                 </TableCell>
-                <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className={`inline-block min-w-9 rounded-md px-1.5 py-0.5 text-center text-sm font-semibold tabular-nums ${corDaNota(l.nota)}`}
-                      >
-                        {l.nota}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {l.motivos.length
-                        ? l.motivos.join(" · ")
-                        : "Não se parece com os clientes atuais"}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableCell>
-                <TableCell className="max-w-0">
-                  <button
-                    type="button"
-                    title={l.nome}
-                    className="block max-w-full truncate text-left font-medium hover:text-primary hover:underline"
-                    onClick={() => setAberto(l.cnpj)}
-                  >
-                    {l.nome}
-                  </button>
-                  <div
-                    className="truncate text-xs text-muted-foreground"
-                    title={l.atividade ?? ""}
-                  >
-                    {l.atividade}
-                  </div>
-                  {l.no_disparo && (
-                    <Badge variant="secondary" className="mt-1">
-                      no disparo
-                    </Badge>
-                  )}
-                </TableCell>
-                {ver("decisor") && (
-                  <TableCell
-                    className="hidden max-w-0 truncate md:table-cell"
-                    title={l.decisor ?? ""}
-                  >
-                    {l.decisor || (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                )}
-                {ver("bairro") && (
-                  <TableCell className="hidden max-w-0 lg:table-cell">
-                    <div className="truncate" title={l.bairro ?? ""}>
-                      {l.bairro}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {l.cidade}
-                    </div>
-                  </TableCell>
-                )}
-                {ver("whatsapp") && (
-                  <TableCell className="hidden whitespace-nowrap sm:table-cell">
-                    {l.whatsapp ? (
-                      <a
-                        className="hover:text-primary hover:underline"
-                        href={`https://wa.me/55${l.whatsapp}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {l.telefone1 &&
-                        l.telefone1.replace(/\D/g, "") === l.whatsapp
-                          ? l.telefone1
-                          : l.telefone2}
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground">só fixo</span>
-                    )}
-                  </TableCell>
-                )}
-                {ver("porte") && (
-                  <TableCell className="hidden truncate lg:table-cell">
-                    {l.porte}
-                  </TableCell>
-                )}
-                {ver("capital") && (
-                  <TableCell className="hidden text-right tabular-nums lg:table-cell">
-                    {moeda.format(l.capital_social)}
-                  </TableCell>
-                )}
-                {ver("anos") && (
-                  <TableCell className="hidden tabular-nums lg:table-cell">
-                    {l.anos ?? ""}
-                  </TableCell>
-                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </div>
-
-      <div className="flex items-center justify-end gap-3">
-        <span className="text-sm text-muted-foreground">
-          Página {pagina} de {numero.format(paginas)}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pagina <= 1}
-          onClick={() => setPagina((p) => p - 1)}
-        >
-          Anterior
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={pagina >= paginas}
-          onClick={() => setPagina((p) => p + 1)}
-        >
-          Próxima
-        </Button>
-      </div>
-
-      <Ficha
-        cnpj={aberto}
-        oferta={filtros.oferta}
-        onClose={() => setAberto(null)}
-      />
+      </details>
     </div>
+  )
+}
+
+function Legenda({ cor, texto }: { cor: string; texto: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="size-3 rounded-sm" style={{ background: cor }} />
+      {texto}
+    </span>
+  )
+}
+
+function PorNumero({ p }: { p: PainelDados }) {
+  if (!p.por_numero.length)
+    return <p className="text-muted-foreground text-sm">Sem contatos ainda.</p>
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Número</TableHead>
+          <TableHead className="text-right">Contatos</TableHead>
+          <TableHead className="text-right">Respostas</TableHead>
+          <TableHead className="text-right">Taxa</TableHead>
+          <TableHead className="text-right">Interesse</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {p.por_numero.map((x) => (
+          <TableRow key={x.instancia}>
+            <TableCell title={x.instancia}>{x.numero}</TableCell>
+            <TableCell className="text-right tabular-nums">
+              {numero.format(x.contatados)}
+            </TableCell>
+            <TableCell className="text-right tabular-nums">
+              {numero.format(x.responderam)}
+            </TableCell>
+            <TableCell className="text-right tabular-nums">
+              {pct(x.responderam, x.contatados)}
+            </TableCell>
+            <TableCell className="text-right tabular-nums">
+              {numero.format(x.interessados)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+function Atencao({ p }: { p: PainelDados }) {
+  if (!p.atencao.length)
+    return (
+      <p className="text-muted-foreground text-sm">Nada parado. Tudo em dia.</p>
+    )
+  const agora = new Date()
+  return (
+    <ul className="grid gap-2">
+      {p.atencao.map((c) => {
+        const vencida = c.proxima_acao_em && new Date(c.proxima_acao_em) < agora
+        const motivo = vencida
+          ? `${c.proxima_acao || "Ação"} vencida (${quando(c.proxima_acao_em)})`
+          : c.ia_pausada
+            ? "Com pessoa, IA pausada"
+            : `Sem resposta há ${dias(c.dias_sem_resposta ?? 0)}`
+        return (
+          <li
+            key={c.id}
+            className="flex items-baseline justify-between gap-3 rounded-md border px-3 py-2 text-sm"
+          >
+            <span className="min-w-0">
+              <span className="block truncate font-medium">{c.nome}</span>
+              <span className="text-muted-foreground text-xs">
+                {[c.responsavel, c.numero].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+            <span
+              className={cn(
+                "shrink-0 text-xs font-semibold",
+                vencida || !c.ia_pausada
+                  ? "text-destructive"
+                  : "text-amber-600 dark:text-amber-400",
+              )}
+            >
+              {motivo}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

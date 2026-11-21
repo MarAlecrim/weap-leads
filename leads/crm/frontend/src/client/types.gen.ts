@@ -87,6 +87,19 @@ export type Coluna = {
     cards: Array<Card>;
 };
 
+export type Dia = {
+    dia: string;
+    enviados: number;
+    respostas: number;
+};
+
+export type EtapaContagem = {
+    etapa: string;
+    nome: string;
+    total: number;
+    valor_cents: number;
+};
+
 export type Evento = {
     de: (string | null);
     para: string;
@@ -245,6 +258,25 @@ export type Opcoes = {
     };
 };
 
+export type Painel = {
+    na_fila: (number | null);
+    enviados_hoje: (number | null);
+    contatados: number;
+    responderam: number;
+    interessados: number;
+    reunioes: number;
+    abertos_valor_cents: number;
+    abertos: number;
+    ganhos: number;
+    ganhos_valor_cents: number;
+    clientes_atuais: (number | null);
+    etapas: Array<EtapaContagem>;
+    por_dia: (Array<Dia> | null);
+    por_numero: Array<PorNumero>;
+    atencao: Array<Card>;
+    atencao_total: number;
+};
+
 export type Perfil = {
     id: string;
     nome: string;
@@ -257,6 +289,14 @@ export type PlanilhaPedido = {
     };
     cnpjs?: Array<(string)>;
     pular_disparo?: boolean;
+};
+
+export type PorNumero = {
+    instancia: string;
+    numero: string;
+    contatados: number;
+    responderam: number;
+    interessados: number;
 };
 
 export type PrivateUserCreate = {
@@ -352,6 +392,10 @@ export type FunilOpcoesResponse = (FunilOpcoes);
 export type FunilFunilData = {
     busca?: string;
     instancia?: (string | null);
+    /**
+     * ex.: "contatado:60,respondeu:40"
+     */
+    limites?: string;
     origem?: (string | null);
     parados?: boolean;
     responsavelId?: (string | null);
@@ -451,6 +495,8 @@ export type LoginRecoverPasswordHtmlContentData = {
 };
 
 export type LoginRecoverPasswordHtmlContentResponse = (string);
+
+export type PainelPainelResponse = (Painel);
 
 export type PrivateCreateUserData = {
     requestBody: PrivateUserCreate;

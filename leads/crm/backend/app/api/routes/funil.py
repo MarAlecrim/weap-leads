@@ -18,7 +18,8 @@ from app.models import Negocio, NegocioHistorico, NegocioNota, User
 
 router = APIRouter(prefix="/funil", tags=["funil"])
 
-POR_COLUNA = 100
+POR_COLUNA = 20  # cards por coluna na 1ª carga; "Carregar mais" pede mais por etapa
+MAX_COLUNA = 1000
 
 
 class Card(BaseModel):
@@ -229,8 +230,16 @@ def funil(
     origem: str | None = None,
     parados: bool = False,
     busca: str = Query(default="", max_length=100),
+    limites: str = Query(
+        default="", max_length=300, description='ex.: "contatado:60,respondeu:40"'
+    ),
 ) -> Any:
     sincronia.sincronizar(session)
+    limite: dict[str, int] = {}
+    for parte in limites.split(","):
+        e, _, n = parte.partition(":")
+        if e in etapas.NOMES and n.isdigit():
+            limite[e] = min(int(n), MAX_COLUNA)
     stmt = _visiveis(select(Negocio), u)
     if responsavel_id:
         stmt = stmt.where(Negocio.responsavel_id == responsavel_id)
@@ -271,7 +280,7 @@ def funil(
                 nome=nome,
                 total=len(da),
                 valor_cents=sum(c.valor_cents or 0 for c in da),
-                cards=da[:POR_COLUNA],
+                cards=da[: limite.get(e, POR_COLUNA)],
             )
         )
     return Funil(colunas=colunas, ligado_ao_agente=repo._engine_agente() is not None)

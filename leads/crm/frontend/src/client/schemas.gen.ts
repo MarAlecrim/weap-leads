@@ -578,6 +578,51 @@ export const ColunaSchema = {
     title: 'Coluna'
 } as const;
 
+export const DiaSchema = {
+    properties: {
+        dia: {
+            type: 'string',
+            format: 'date',
+            title: 'Dia'
+        },
+        enviados: {
+            type: 'integer',
+            title: 'Enviados'
+        },
+        respostas: {
+            type: 'integer',
+            title: 'Respostas'
+        }
+    },
+    type: 'object',
+    required: ['dia', 'enviados', 'respostas'],
+    title: 'Dia'
+} as const;
+
+export const EtapaContagemSchema = {
+    properties: {
+        etapa: {
+            type: 'string',
+            title: 'Etapa'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        },
+        valor_cents: {
+            type: 'integer',
+            title: 'Valor Cents'
+        }
+    },
+    type: 'object',
+    required: ['etapa', 'nome', 'total', 'valor_cents'],
+    title: 'EtapaContagem'
+} as const;
+
 export const EventoSchema = {
     properties: {
         de: {
@@ -1292,6 +1337,118 @@ export const OpcoesSchema = {
     title: 'Opcoes'
 } as const;
 
+export const PainelSchema = {
+    properties: {
+        na_fila: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Na Fila'
+        },
+        enviados_hoje: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Enviados Hoje'
+        },
+        contatados: {
+            type: 'integer',
+            title: 'Contatados'
+        },
+        responderam: {
+            type: 'integer',
+            title: 'Responderam'
+        },
+        interessados: {
+            type: 'integer',
+            title: 'Interessados'
+        },
+        reunioes: {
+            type: 'integer',
+            title: 'Reunioes'
+        },
+        abertos_valor_cents: {
+            type: 'integer',
+            title: 'Abertos Valor Cents'
+        },
+        abertos: {
+            type: 'integer',
+            title: 'Abertos'
+        },
+        ganhos: {
+            type: 'integer',
+            title: 'Ganhos'
+        },
+        ganhos_valor_cents: {
+            type: 'integer',
+            title: 'Ganhos Valor Cents'
+        },
+        clientes_atuais: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Clientes Atuais'
+        },
+        etapas: {
+            items: {
+                '$ref': '#/components/schemas/EtapaContagem'
+            },
+            type: 'array',
+            title: 'Etapas'
+        },
+        por_dia: {
+            anyOf: [
+                {
+                    items: {
+                        '$ref': '#/components/schemas/Dia'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Por Dia'
+        },
+        por_numero: {
+            items: {
+                '$ref': '#/components/schemas/PorNumero'
+            },
+            type: 'array',
+            title: 'Por Numero'
+        },
+        atencao: {
+            items: {
+                '$ref': '#/components/schemas/Card'
+            },
+            type: 'array',
+            title: 'Atencao'
+        },
+        atencao_total: {
+            type: 'integer',
+            title: 'Atencao Total'
+        }
+    },
+    type: 'object',
+    required: ['na_fila', 'enviados_hoje', 'contatados', 'responderam', 'interessados', 'reunioes', 'abertos_valor_cents', 'abertos', 'ganhos', 'ganhos_valor_cents', 'clientes_atuais', 'etapas', 'por_dia', 'por_numero', 'atencao', 'atencao_total'],
+    title: 'Painel'
+} as const;
+
 export const PerfilSchema = {
     properties: {
         id: {
@@ -1336,6 +1493,34 @@ export const PlanilhaPedidoSchema = {
     },
     type: 'object',
     title: 'PlanilhaPedido'
+} as const;
+
+export const PorNumeroSchema = {
+    properties: {
+        instancia: {
+            type: 'string',
+            title: 'Instancia'
+        },
+        numero: {
+            type: 'string',
+            title: 'Numero'
+        },
+        contatados: {
+            type: 'integer',
+            title: 'Contatados'
+        },
+        responderam: {
+            type: 'integer',
+            title: 'Responderam'
+        },
+        interessados: {
+            type: 'integer',
+            title: 'Interessados'
+        }
+    },
+    type: 'object',
+    required: ['instancia', 'numero', 'contatados', 'responderam', 'interessados'],
+    title: 'PorNumero'
 } as const;
 
 export const PrivateUserCreateSchema = {
