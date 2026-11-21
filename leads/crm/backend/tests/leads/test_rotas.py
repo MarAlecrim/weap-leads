@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 from app.core.config import settings
+from app.leads import notas, repo
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -15,6 +16,9 @@ def precisa_da_receita(db: Session) -> None:
     ).scalar()
     if not ok:
         pytest.skip("banco sem o schema receita")
+    # deixa a tabela de notas pronta antes (senão a 1ª busca a refaz em segundo plano)
+    assert notas.recalcular()
+    notas._estado["checado"] = 0.0
 
 
 def test_busca_pede_login(client: TestClient) -> None:
@@ -90,3 +94,38 @@ def test_filtro_de_capital(
     assert all(10000 <= x["capital_social"] <= 500000 for x in j["data"])
     nada = _busca(client, superuser_token_headers, capital_min=10, capital_max=1)
     assert nada["count"] == 0
+
+
+@pytest.mark.parametrize(
+    "filtros",
+    [
+        repo.Filtros(),
+        repo.Filtros(celular=False),
+        repo.Filtros(celular=False, nota_min=60),
+        repo.Filtros(oferta="site", celular=False),
+        repo.Filtros(celular=False, porte=["me", "mei"]),
+        repo.Filtros(oferta="inexistente", email=True, celular=False),
+    ],
+)
+def test_nota_guardada_igual_a_calculada(
+    db: Session, monkeypatch: pytest.MonkeyPatch, filtros: repo.Filtros
+) -> None:
+    rapida, total_rapida = repo.buscar(db, filtros)
+    assert notas.coluna(db, repo._oferta(filtros)) is not None
+    monkeypatch.setattr(notas, "coluna", lambda *_: None)
+    lenta, total_lenta = repo.buscar(db, filtros)
+    assert total_rapida == total_lenta
+    assert [(x["cnpj"], x["nota"], x["motivos"]) for x in rapida] == [
+        (x["cnpj"], x["nota"], x["motivos"]) for x in lenta
+    ]
+
+
+def test_notas_refeitas_quando_clientes_mudam(db: Session) -> None:
+    marca = notas._marca(db)
+    db.execute(text("UPDATE receita.clientes_weap SET ofertas = ofertas || '{teste}'"))
+    try:
+        assert notas._marca(db) != marca
+        assert not notas._em_dia(db)
+    finally:
+        db.rollback()
+    assert notas._em_dia(db)
