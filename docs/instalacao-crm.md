@@ -150,3 +150,11 @@ Clicar num card abre a ficha: etapa, valor, responsável e próxima ação, os d
 ```
 cd /opt/weap-leads && docker compose up -d --build api web
 ```
+
+## Atualização: painel na tela inicial
+
+A primeira tela passa a ser o **Painel**: fila do disparo, contatados, respostas, interessados, propostas, ganhos, clientes atuais, o funil por etapa, o disparo dos últimos 14 dias, os números por WhatsApp e os leads que precisam de atenção. O vendedor vê só os números dele. A consulta da base foi para o menu **Busca de leads** (`/busca`). No Funil, cada coluna abre com 20 cards e um botão **Carregar mais**. Não há migração.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```

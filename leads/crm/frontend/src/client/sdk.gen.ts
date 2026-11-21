@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class FunilService {
     /**
@@ -26,6 +26,7 @@ export class FunilService {
      * @param data.origem
      * @param data.parados
      * @param data.busca
+     * @param data.limites ex.: "contatado:60,respondeu:40"
      * @returns Funil Successful Response
      * @throws ApiError
      */
@@ -38,7 +39,8 @@ export class FunilService {
                 instancia: data.instancia,
                 origem: data.origem,
                 parados: data.parados,
-                busca: data.busca
+                busca: data.busca,
+                limites: data.limites
             },
             errors: {
                 422: 'Validation Error'
@@ -366,6 +368,20 @@ export class LoginService {
             errors: {
                 422: 'Validation Error'
             }
+        });
+    }
+}
+
+export class PainelService {
+    /**
+     * Painel
+     * @returns Painel Successful Response
+     * @throws ApiError
+     */
+    public static painel(): CancelablePromise<PainelPainelResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/painel/'
         });
     }
 }

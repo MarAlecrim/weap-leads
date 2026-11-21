@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 
@@ -15,6 +20,8 @@ export const Route = createFileRoute("/_layout/funil")({
   component: Funil,
   head: () => ({ meta: [{ title: "Funil - Weap" }] }),
 })
+
+const MAIS = 50
 
 // Etapas que ficam recolhidas nas pontas até a pessoa abrir
 const RECOLHIDAS = ["fila", "ganho", "perdido"]
@@ -44,6 +51,8 @@ function Funil() {
     etapa?: string
   } | null>(null)
   const [sobre, setSobre] = useState<string | null>(null)
+  // quantos cards mostrar por coluna além dos 20 iniciais ("Carregar mais")
+  const [limites, setLimites] = useState<Record<string, number>>({})
   const qc = useQueryClient()
   const { showErrorToast } = useCustomToast()
 
@@ -52,8 +61,8 @@ function Funil() {
     queryFn: () => FunilService.opcoes(),
     staleTime: 60_000,
   })
-  const { data, isLoading } = useQuery({
-    queryKey: ["funil", f],
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["funil", f, limites],
     queryFn: () =>
       FunilService.funil({
         responsavelId: f.responsavel_id || undefined,
@@ -61,7 +70,12 @@ function Funil() {
         origem: f.origem || undefined,
         parados: f.parados,
         busca: f.busca || undefined,
+        limites:
+          Object.entries(limites)
+            .map(([e, n]) => `${e}:${n}`)
+            .join(",") || undefined,
       }),
+    placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   })
 
@@ -247,10 +261,23 @@ function Funil() {
                 />
               ))}
               {c.total > c.cards.length && (
-                <p className="px-1 text-muted-foreground text-xs">
-                  Mostrando {c.cards.length} de {c.total}. Use os filtros para
-                  achar os outros.
-                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full flex-col gap-0 py-1.5 whitespace-normal"
+                  disabled={isFetching}
+                  onClick={() =>
+                    setLimites((l) => ({
+                      ...l,
+                      [c.etapa]: c.cards.length + MAIS,
+                    }))
+                  }
+                >
+                  <span>Carregar mais</span>
+                  <span className="text-muted-foreground text-xs font-normal">
+                    {c.total - c.cards.length} restantes
+                  </span>
+                </Button>
               )}
             </section>
           ))}
