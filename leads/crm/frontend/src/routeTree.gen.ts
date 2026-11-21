@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutFunilRouteImport } from './routes/_layout/funil'
 import { Route as LayoutClientesRouteImport } from './routes/_layout/clientes'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 
@@ -47,6 +48,11 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutFunilRoute = LayoutFunilRouteImport.update({
+  id: '/funil',
+  path: '/funil',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutClientesRoute = LayoutClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof LayoutAdminRoute
   '/clientes': typeof LayoutClientesRoute
+  '/funil': typeof LayoutFunilRoute
   '/settings': typeof LayoutSettingsRoute
 }
 export interface FileRoutesByTo {
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof LayoutAdminRoute
   '/clientes': typeof LayoutClientesRoute
+  '/funil': typeof LayoutFunilRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
 }
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/clientes': typeof LayoutClientesRoute
+  '/_layout/funil': typeof LayoutFunilRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
 }
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/clientes'
+    | '/funil'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/clientes'
+    | '/funil'
     | '/settings'
     | '/'
   id:
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_layout/admin'
     | '/_layout/clientes'
+    | '/_layout/funil'
     | '/_layout/settings'
     | '/_layout/'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/funil': {
+      id: '/_layout/funil'
+      path: '/funil'
+      fullPath: '/funil'
+      preLoaderRoute: typeof LayoutFunilRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/clientes': {
       id: '/_layout/clientes'
       path: '/clientes'
@@ -189,6 +208,7 @@ declare module '@tanstack/react-router' {
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutClientesRoute: typeof LayoutClientesRoute
+  LayoutFunilRoute: typeof LayoutFunilRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
 }
@@ -196,6 +216,7 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutClientesRoute: LayoutClientesRoute,
+  LayoutFunilRoute: LayoutFunilRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
 }

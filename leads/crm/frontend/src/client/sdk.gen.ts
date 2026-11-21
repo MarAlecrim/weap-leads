@@ -3,7 +3,72 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFichaData, LeadsFichaResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilAtualizarData, FunilAtualizarResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+
+export class FunilService {
+    /**
+     * Opcoes
+     * @returns FunilOpcoes Successful Response
+     * @throws ApiError
+     */
+    public static opcoes(): CancelablePromise<FunilOpcoesResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/funil/opcoes'
+        });
+    }
+    
+    /**
+     * Funil
+     * @param data The data for the request.
+     * @param data.responsavelId
+     * @param data.instancia
+     * @param data.origem
+     * @param data.parados
+     * @param data.busca
+     * @returns Funil Successful Response
+     * @throws ApiError
+     */
+    public static funil(data: FunilFunilData = {}): CancelablePromise<FunilFunilResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/funil/',
+            query: {
+                responsavel_id: data.responsavelId,
+                instancia: data.instancia,
+                origem: data.origem,
+                parados: data.parados,
+                busca: data.busca
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Atualizar
+     * @param data The data for the request.
+     * @param data.negocioId
+     * @param data.requestBody
+     * @returns Card Successful Response
+     * @throws ApiError
+     */
+    public static atualizar(data: FunilAtualizarData): CancelablePromise<FunilAtualizarResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/funil/{negocio_id}',
+            path: {
+                negocio_id: data.negocioId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
 
 export class LeadsService {
     /**
@@ -86,6 +151,19 @@ export class LeadsService {
     }
     
     /**
+     * Fila
+     * Situação da fila do disparo no banco do agente (vazio se não estiver ligado).
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static fila(): CancelablePromise<LeadsFilaResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/leads/fila'
+        });
+    }
+    
+    /**
      * Ficha
      * Ficha da empresa com sócios e decisor.
      * @param data The data for the request.
@@ -104,6 +182,26 @@ export class LeadsService {
             query: {
                 oferta: data.oferta
             },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Mandar Para Disparo
+     * Coloca os leads (marcados ou do filtro, até 3.000) na fila do disparo do n8n.
+     * @param data The data for the request.
+     * @param data.requestBody
+     * @returns FilaResultado Successful Response
+     * @throws ApiError
+     */
+    public static mandarParaDisparo(data: LeadsMandarParaDisparoData): CancelablePromise<LeadsMandarParaDisparoResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/leads/disparo',
+            body: data.requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: 'Validation Error'
             }

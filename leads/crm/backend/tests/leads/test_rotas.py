@@ -86,9 +86,7 @@ def test_filtro_de_porte(
 def test_filtro_de_capital(
     client: TestClient, superuser_token_headers: dict[str, str]
 ) -> None:
-    j = _busca(
-        client, superuser_token_headers, capital_min=10000, capital_max=500000
-    )
+    j = _busca(client, superuser_token_headers, capital_min=10000, capital_max=500000)
     assert all(10000 <= x["capital_social"] <= 500000 for x in j["data"])
     nada = _busca(client, superuser_token_headers, capital_min=10, capital_max=1)
     assert nada["count"] == 0

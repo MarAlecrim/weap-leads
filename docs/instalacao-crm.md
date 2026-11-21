@@ -130,3 +130,15 @@ cd /opt/weap-leads && docker compose up -d --build api web
 ```
 
 Daqui pra frente a importação mensal já traz o Simples junto.
+
+## Atualização: Funil e perfis de usuário (fase 2a)
+
+Entra a tela **Funil** (kanban) e o perfil de cada usuário (Administrador, Gestor ou Vendedor, com os números de WhatsApp dele). As tabelas novas são criadas sozinhas quando a API sobe.
+
+No servidor, depois de copiar o `crm/` atualizado:
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
+
+Depois, em **Admin**, edite cada usuário e escolha o perfil e os números. O vendedor vê só os leads dos números dele e os que forem passados para ele.

@@ -57,6 +57,183 @@ export const Body_login_login_access_tokenSchema = {
     title: 'Body_login-login_access_token'
 } as const;
 
+export const CardSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        cnpj: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cnpj'
+        },
+        cidade: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cidade'
+        },
+        origem: {
+            type: 'string',
+            title: 'Origem'
+        },
+        nota: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Nota'
+        },
+        instancia: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Instancia'
+        },
+        numero: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Numero'
+        },
+        responsavel_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Responsavel Id'
+        },
+        responsavel: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Responsavel'
+        },
+        etapa: {
+            type: 'string',
+            title: 'Etapa'
+        },
+        valor_cents: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Valor Cents'
+        },
+        servico: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Servico'
+        },
+        dias_na_etapa: {
+            type: 'integer',
+            title: 'Dias Na Etapa'
+        },
+        dias_sem_resposta: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Dias Sem Resposta'
+        },
+        ia_pausada: {
+            type: 'boolean',
+            title: 'Ia Pausada'
+        },
+        proxima_acao: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Proxima Acao'
+        },
+        proxima_acao_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Proxima Acao Em'
+        },
+        perdido_motivo: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Perdido Motivo'
+        }
+    },
+    type: 'object',
+    required: ['id', 'nome', 'cnpj', 'cidade', 'origem', 'nota', 'instancia', 'numero', 'responsavel_id', 'responsavel', 'etapa', 'valor_cents', 'servico', 'dias_na_etapa', 'dias_sem_resposta', 'ia_pausada', 'proxima_acao', 'proxima_acao_em', 'perdido_motivo'],
+    title: 'Card'
+} as const;
+
 export const CidadeSchema = {
     properties: {
         id: {
@@ -146,6 +323,147 @@ export const ClienteSchema = {
     title: 'Cliente'
 } as const;
 
+export const ColunaSchema = {
+    properties: {
+        etapa: {
+            type: 'string',
+            title: 'Etapa'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        },
+        valor_cents: {
+            type: 'integer',
+            title: 'Valor Cents'
+        },
+        cards: {
+            items: {
+                '$ref': '#/components/schemas/Card'
+            },
+            type: 'array',
+            title: 'Cards'
+        }
+    },
+    type: 'object',
+    required: ['etapa', 'nome', 'total', 'valor_cents', 'cards'],
+    title: 'Coluna'
+} as const;
+
+export const FilaResultadoSchema = {
+    properties: {
+        adicionados: {
+            type: 'integer',
+            title: 'Adicionados'
+        },
+        ja_no_disparo: {
+            type: 'integer',
+            title: 'Ja No Disparo'
+        },
+        sem_whatsapp: {
+            type: 'integer',
+            title: 'Sem Whatsapp'
+        }
+    },
+    type: 'object',
+    required: ['adicionados', 'ja_no_disparo', 'sem_whatsapp'],
+    title: 'FilaResultado'
+} as const;
+
+export const FilaResumoSchema = {
+    properties: {
+        aguardando: {
+            type: 'integer',
+            title: 'Aguardando'
+        },
+        enviando: {
+            type: 'integer',
+            title: 'Enviando'
+        },
+        enviados_hoje: {
+            type: 'integer',
+            title: 'Enviados Hoje'
+        },
+        enviados: {
+            type: 'integer',
+            title: 'Enviados'
+        },
+        pulados: {
+            type: 'integer',
+            title: 'Pulados'
+        }
+    },
+    type: 'object',
+    required: ['aguardando', 'enviando', 'enviados_hoje', 'enviados', 'pulados'],
+    title: 'FilaResumo'
+} as const;
+
+export const FunilSchema = {
+    properties: {
+        colunas: {
+            items: {
+                '$ref': '#/components/schemas/Coluna'
+            },
+            type: 'array',
+            title: 'Colunas'
+        },
+        ligado_ao_agente: {
+            type: 'boolean',
+            title: 'Ligado Ao Agente'
+        }
+    },
+    type: 'object',
+    required: ['colunas', 'ligado_ao_agente'],
+    title: 'Funil'
+} as const;
+
+export const FunilOpcoesSchema = {
+    properties: {
+        etapas: {
+            items: {
+                '$ref': '#/components/schemas/Item'
+            },
+            type: 'array',
+            title: 'Etapas'
+        },
+        servicos: {
+            items: {
+                '$ref': '#/components/schemas/Servico'
+            },
+            type: 'array',
+            title: 'Servicos'
+        },
+        motivos: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Motivos'
+        },
+        responsaveis: {
+            items: {
+                '$ref': '#/components/schemas/Item'
+            },
+            type: 'array',
+            title: 'Responsaveis'
+        },
+        numeros: {
+            items: {
+                '$ref': '#/components/schemas/Item'
+            },
+            type: 'array',
+            title: 'Numeros'
+        }
+    },
+    type: 'object',
+    required: ['etapas', 'servicos', 'motivos', 'responsaveis', 'numeros'],
+    title: 'FunilOpcoes'
+} as const;
+
 export const HTTPValidationErrorSchema = {
     properties: {
         detail: {
@@ -158,6 +476,22 @@ export const HTTPValidationErrorSchema = {
     },
     type: 'object',
     title: 'HTTPValidationError'
+} as const;
+
+export const ItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        }
+    },
+    type: 'object',
+    required: ['id', 'nome'],
+    title: 'Item'
 } as const;
 
 export const LeadSchema = {
@@ -446,6 +780,92 @@ export const MessageSchema = {
     title: 'Message'
 } as const;
 
+export const NegocioAtualizaSchema = {
+    properties: {
+        etapa: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Etapa'
+        },
+        valor_cents: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Valor Cents'
+        },
+        servico: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Servico'
+        },
+        responsavel_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Responsavel Id'
+        },
+        perdido_motivo: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Perdido Motivo'
+        },
+        proxima_acao: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Proxima Acao'
+        },
+        proxima_acao_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Proxima Acao Em'
+        }
+    },
+    type: 'object',
+    title: 'NegocioAtualiza'
+} as const;
+
 export const NewPasswordSchema = {
     properties: {
         token: {
@@ -601,6 +1021,26 @@ export const PrivateUserCreateSchema = {
     title: 'PrivateUserCreate'
 } as const;
 
+export const ServicoSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        valor_cents: {
+            type: 'integer',
+            title: 'Valor Cents'
+        }
+    },
+    type: 'object',
+    required: ['id', 'nome', 'valor_cents'],
+    title: 'Servico'
+} as const;
+
 export const SocioSchema = {
     properties: {
         nome: {
@@ -703,6 +1143,19 @@ export const UserCreateSchema = {
             ],
             title: 'Full Name'
         },
+        perfil: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Perfil',
+            default: 'vendedor'
+        },
+        numeros: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Numeros'
+        },
         password: {
             type: 'string',
             maxLength: 128,
@@ -744,6 +1197,19 @@ export const UserPublicSchema = {
                 }
             ],
             title: 'Full Name'
+        },
+        perfil: {
+            type: 'string',
+            maxLength: 20,
+            title: 'Perfil',
+            default: 'vendedor'
+        },
+        numeros: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Numeros'
         },
         id: {
             type: 'string',
@@ -836,6 +1302,32 @@ export const UserUpdateSchema = {
                 }
             ],
             title: 'Full Name'
+        },
+        perfil: {
+            anyOf: [
+                {
+                    type: 'string',
+                    maxLength: 20
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Perfil'
+        },
+        numeros: {
+            anyOf: [
+                {
+                    items: {
+                        type: 'string'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Numeros'
         },
         password: {
             anyOf: [

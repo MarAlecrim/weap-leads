@@ -9,6 +9,28 @@ export type Body_login_login_access_token = {
     client_secret?: (string | null);
 };
 
+export type Card = {
+    id: number;
+    nome: string;
+    cnpj: (string | null);
+    cidade: (string | null);
+    origem: string;
+    nota: (number | null);
+    instancia: (string | null);
+    numero: (string | null);
+    responsavel_id: (string | null);
+    responsavel: (string | null);
+    etapa: string;
+    valor_cents: (number | null);
+    servico: (string | null);
+    dias_na_etapa: number;
+    dias_sem_resposta: (number | null);
+    ia_pausada: boolean;
+    proxima_acao: (string | null);
+    proxima_acao_em: (string | null);
+    perdido_motivo: (string | null);
+};
+
 export type Cidade = {
     id: string;
     nome: string;
@@ -29,8 +51,48 @@ export type Cliente = {
     achou: boolean;
 };
 
+export type Coluna = {
+    etapa: string;
+    nome: string;
+    total: number;
+    valor_cents: number;
+    cards: Array<Card>;
+};
+
+export type FilaResultado = {
+    adicionados: number;
+    ja_no_disparo: number;
+    sem_whatsapp: number;
+};
+
+export type FilaResumo = {
+    aguardando: number;
+    enviando: number;
+    enviados_hoje: number;
+    enviados: number;
+    pulados: number;
+};
+
+export type Funil = {
+    colunas: Array<Coluna>;
+    ligado_ao_agente: boolean;
+};
+
+export type FunilOpcoes = {
+    etapas: Array<Item>;
+    servicos: Array<Servico>;
+    motivos: Array<(string)>;
+    responsaveis: Array<Item>;
+    numeros: Array<Item>;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
+};
+
+export type Item = {
+    id: string;
+    nome: string;
 };
 
 export type Lead = {
@@ -95,6 +157,16 @@ export type Message = {
     message: string;
 };
 
+export type NegocioAtualiza = {
+    etapa?: (string | null);
+    valor_cents?: (number | null);
+    servico?: (string | null);
+    responsavel_id?: (string | null);
+    perdido_motivo?: (string | null);
+    proxima_acao?: (string | null);
+    proxima_acao_em?: (string | null);
+};
+
 export type NewPassword = {
     token: string;
     new_password: string;
@@ -139,6 +211,12 @@ export type PrivateUserCreate = {
     is_verified?: boolean;
 };
 
+export type Servico = {
+    id: string;
+    nome: string;
+    valor_cents: number;
+};
+
 export type Socio = {
     nome: string;
     pessoa_fisica: boolean;
@@ -162,6 +240,8 @@ export type UserCreate = {
     is_active?: boolean;
     is_superuser?: boolean;
     full_name?: (string | null);
+    perfil?: string;
+    numeros?: Array<(string)>;
     password: string;
 };
 
@@ -170,6 +250,8 @@ export type UserPublic = {
     is_active?: boolean;
     is_superuser?: boolean;
     full_name?: (string | null);
+    perfil?: string;
+    numeros?: Array<(string)>;
     id: string;
     created_at?: (string | null);
 };
@@ -190,6 +272,8 @@ export type UserUpdate = {
     is_active?: boolean;
     is_superuser?: boolean;
     full_name?: (string | null);
+    perfil?: (string | null);
+    numeros?: (Array<(string)> | null);
     password?: (string | null);
 };
 
@@ -207,6 +291,25 @@ export type ValidationError = {
         [key: string]: unknown;
     };
 };
+
+export type FunilOpcoesResponse = (FunilOpcoes);
+
+export type FunilFunilData = {
+    busca?: string;
+    instancia?: (string | null);
+    origem?: (string | null);
+    parados?: boolean;
+    responsavelId?: (string | null);
+};
+
+export type FunilFunilResponse = (Funil);
+
+export type FunilAtualizarData = {
+    negocioId: number;
+    requestBody: NegocioAtualiza;
+};
+
+export type FunilAtualizarResponse = (Card);
 
 export type LeadsOpcoesResponse = (Opcoes);
 
@@ -234,12 +337,20 @@ export type LeadsBuscarResponse = (LeadsPagina);
 
 export type LeadsClientesResponse = (Array<Cliente>);
 
+export type LeadsFilaResponse = ((FilaResumo | null));
+
 export type LeadsFichaData = {
     cnpj: string;
     oferta?: string;
 };
 
 export type LeadsFichaResponse = (LeadFicha);
+
+export type LeadsMandarParaDisparoData = {
+    requestBody: PlanilhaPedido;
+};
+
+export type LeadsMandarParaDisparoResponse = (FilaResultado);
 
 export type LeadsPlanilhaData = {
     requestBody: PlanilhaPedido;
