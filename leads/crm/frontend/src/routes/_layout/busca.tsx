@@ -100,7 +100,8 @@ function useColunas() {
 
 function Busca() {
   const [rascunho, setRascunho] = useState<FiltrosBusca>(filtrosPadrao)
-  const [filtros, setFiltros] = useState<FiltrosBusca>(filtrosPadrao)
+  // a busca só roda depois do primeiro clique em Buscar
+  const [filtros, setFiltros] = useState<FiltrosBusca | null>(null)
   const [pagina, setPagina] = useState(1)
   const [marcados, setMarcados] = useState<string[]>([])
   const [aberto, setAberto] = useState<string | null>(null)
@@ -119,7 +120,9 @@ function Busca() {
 
   const { data, isFetching, isLoading } = useQuery({
     queryKey: ["leads", filtros, pagina],
-    queryFn: () => LeadsService.buscar({ ...paraApi(filtros), pagina }),
+    queryFn: () =>
+      LeadsService.buscar({ ...paraApi(filtros ?? filtrosPadrao), pagina }),
+    enabled: filtros !== null,
     placeholderData: keepPreviousData,
   })
 
@@ -145,6 +148,7 @@ function Busca() {
     setMarcados((m) => (v ? [...m, cnpj] : m.filter((x) => x !== cnpj)))
 
   const baixar = async (so_marcados: boolean) => {
+    if (!filtros) return
     setBaixando(true)
     try {
       await baixarPlanilha(filtros, so_marcados ? marcados : [], pularDisparo)
@@ -175,7 +179,11 @@ function Busca() {
 
       <div className="flex flex-wrap items-center gap-3">
         <strong>
-          {isLoading ? "Buscando…" : `${numero.format(total)} empresas`}
+          {!filtros
+            ? "Escolha os filtros e clique em Buscar"
+            : isLoading
+              ? "Buscando…"
+              : `${numero.format(total)} empresas`}
         </strong>
         {isFetching && !isLoading && (
           <span className="text-sm text-muted-foreground">atualizando…</span>
@@ -233,7 +241,7 @@ function Busca() {
             <Download /> Planilha de todos (até 3.000)
           </Button>
           <MandarDisparo
-            filtros={filtros}
+            filtros={filtros ?? filtrosPadrao}
             marcados={marcados}
             total={total}
             onFeito={() => setMarcados([])}
@@ -307,7 +315,9 @@ function Busca() {
                   colSpan={nColunas}
                   className="py-10 text-center text-muted-foreground"
                 >
-                  Nenhuma empresa com esses filtros.
+                  {filtros
+                    ? "Nenhuma empresa com esses filtros."
+                    : "Escolha os filtros acima e clique em Buscar."}
                 </TableCell>
               </TableRow>
             )}
@@ -441,7 +451,7 @@ function Busca() {
 
       <Ficha
         cnpj={aberto}
-        oferta={filtros.oferta}
+        oferta={(filtros ?? rascunho).oferta}
         onClose={() => setAberto(null)}
       />
     </div>
