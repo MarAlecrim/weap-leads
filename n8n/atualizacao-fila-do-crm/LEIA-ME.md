@@ -26,6 +26,8 @@ Os leads da Receita não vieram do Google Maps. O campo Origem muda o texto: com
 
 Se a execução cair no meio, o lead fica como `pegando`. Depois de 30 minutos ele volta para a fila, no máximo 2 vezes.
 
+Em feriado o "Pular lead?" manda o lead para "Marca pulado na fila", que o devolve para a fila (`novo`) sem gastar tentativa. Ele sai no próximo dia útil.
+
 ## Para desfazer
 
 Reimportar o backup do workflow (feito antes da troca) no servidor do n8n. A fila não atrapalha nada se ficar no banco.
