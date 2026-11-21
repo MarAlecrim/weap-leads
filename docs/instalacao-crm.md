@@ -142,3 +142,11 @@ cd /opt/weap-leads && docker compose up -d --build api web
 ```
 
 Depois, em **Admin**, edite cada usuário e escolha o perfil e os números. O vendedor vê só os leads dos números dele e os que forem passados para ele.
+
+## Atualização: ficha do lead no Funil (fase 2b)
+
+Clicar num card abre a ficha: etapa, valor, responsável e próxima ação, os dados da Receita, a conversa do WhatsApp (só leitura, lida do banco do agente quando a ficha abre), o resumo da IA, as notas e o histórico. A tabela de notas é criada sozinha quando a API sobe.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
