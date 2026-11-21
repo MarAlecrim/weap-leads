@@ -146,6 +146,54 @@ export const ClienteSchema = {
     title: 'Cliente'
 } as const;
 
+export const FilaResultadoSchema = {
+    properties: {
+        adicionados: {
+            type: 'integer',
+            title: 'Adicionados'
+        },
+        ja_no_disparo: {
+            type: 'integer',
+            title: 'Ja No Disparo'
+        },
+        sem_whatsapp: {
+            type: 'integer',
+            title: 'Sem Whatsapp'
+        }
+    },
+    type: 'object',
+    required: ['adicionados', 'ja_no_disparo', 'sem_whatsapp'],
+    title: 'FilaResultado'
+} as const;
+
+export const FilaResumoSchema = {
+    properties: {
+        aguardando: {
+            type: 'integer',
+            title: 'Aguardando'
+        },
+        enviando: {
+            type: 'integer',
+            title: 'Enviando'
+        },
+        enviados_hoje: {
+            type: 'integer',
+            title: 'Enviados Hoje'
+        },
+        enviados: {
+            type: 'integer',
+            title: 'Enviados'
+        },
+        pulados: {
+            type: 'integer',
+            title: 'Pulados'
+        }
+    },
+    type: 'object',
+    required: ['aguardando', 'enviando', 'enviados_hoje', 'enviados', 'pulados'],
+    title: 'FilaResumo'
+} as const;
+
 export const HTTPValidationErrorSchema = {
     properties: {
         detail: {

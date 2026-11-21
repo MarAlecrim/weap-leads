@@ -1,0 +1,6 @@
+-- Node Postgres "Marca pulado na fila" (substitui o "Marca como pulado na planilha"). Operation: Execute Query.
+UPDATE sdr_fila SET status = 'pulado', motivo = $2, instancia = $3
+ WHERE id = $1::bigint;
+
+-- Query Parameters:
+-- {{ [ $('Pega lead da fila').first().json.fila_id, String($json.motivo || ''), $('Dados_Evolution').first().json.instancia ] }}
