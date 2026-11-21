@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import type { UserPublic } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { nomeDoPerfil } from "./PerfilCampos"
 import { UserActionsMenu } from "./UserActionsMenu"
 
 export type UserTableData = UserPublic & {
@@ -39,12 +40,21 @@ export const columns: ColumnDef<UserTableData>[] = [
     ),
   },
   {
-    accessorKey: "is_superuser",
-    header: "Role",
+    accessorKey: "perfil",
+    header: "Perfil",
     cell: ({ row }) => (
-      <Badge variant={row.original.is_superuser ? "default" : "secondary"}>
-        {row.original.is_superuser ? "Superuser" : "User"}
-      </Badge>
+      <div className="flex flex-col gap-1">
+        <Badge variant={row.original.is_superuser ? "default" : "secondary"}>
+          {nomeDoPerfil(
+            row.original.is_superuser ? "admin" : row.original.perfil,
+          )}
+        </Badge>
+        {!!row.original.numeros?.length && (
+          <span className="text-muted-foreground text-xs">
+            {row.original.numeros.join(", ")}
+          </span>
+        )}
+      </div>
     ),
   },
   {

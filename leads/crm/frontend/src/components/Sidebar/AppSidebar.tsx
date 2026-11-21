@@ -1,4 +1,4 @@
-import { Building2, Search, Users } from "lucide-react"
+import { Building2, Kanban, Search, Users } from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -14,6 +14,7 @@ import { User } from "./User"
 
 const baseItems: Item[] = [
   { icon: Search, title: "Busca de leads", path: "/" },
+  { icon: Kanban, title: "Funil", path: "/funil" },
   { icon: Building2, title: "Clientes atuais", path: "/clientes" },
 ]
 
