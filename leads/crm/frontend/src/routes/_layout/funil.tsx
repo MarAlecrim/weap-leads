@@ -13,6 +13,7 @@ import { FichaFunil } from "@/components/Funil/FichaFunil"
 import { ORIGENS, reais, selectCls } from "@/components/Funil/util"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { cn } from "@/lib/utils"
 
@@ -55,12 +56,20 @@ function Funil() {
   const [limites, setLimites] = useState<Record<string, number>>({})
   const qc = useQueryClient()
   const { showErrorToast } = useCustomToast()
+  const { user: eu } = useAuth()
+  // o vendedor só vê os leads dele: os filtros não mostram os outros
+  const vendedor =
+    !!eu && !eu.is_superuser && (eu.perfil ?? "vendedor") === "vendedor"
 
   const { data: opcoes } = useQuery({
     queryKey: ["funil-opcoes"],
     queryFn: () => FunilService.opcoes(),
     staleTime: 60_000,
   })
+  const meusNumeros = (opcoes?.numeros ?? []).filter(
+    (n) => !vendedor || (eu?.numeros ?? []).includes(n.id),
+  )
+
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["funil", f, limites],
     queryFn: () =>
@@ -120,32 +129,36 @@ function Funil() {
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
-        <select
-          aria-label="Responsável"
-          className={cn(selectCls, "w-auto")}
-          value={f.responsavel_id}
-          onChange={(e) => setF({ ...f, responsavel_id: e.target.value })}
-        >
-          <option value="">Responsável: todos</option>
-          {opcoes?.responsaveis.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.nome}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Número"
-          className={cn(selectCls, "w-auto")}
-          value={f.instancia}
-          onChange={(e) => setF({ ...f, instancia: e.target.value })}
-        >
-          <option value="">Número: todos</option>
-          {opcoes?.numeros.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.nome}
-            </option>
-          ))}
-        </select>
+        {!vendedor && (
+          <select
+            aria-label="Responsável"
+            className={cn(selectCls, "w-auto")}
+            value={f.responsavel_id}
+            onChange={(e) => setF({ ...f, responsavel_id: e.target.value })}
+          >
+            <option value="">Responsável: todos</option>
+            {opcoes?.responsaveis.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.nome}
+              </option>
+            ))}
+          </select>
+        )}
+        {(!vendedor || meusNumeros.length > 1) && (
+          <select
+            aria-label="Número"
+            className={cn(selectCls, "w-auto")}
+            value={f.instancia}
+            onChange={(e) => setF({ ...f, instancia: e.target.value })}
+          >
+            <option value="">Número: todos</option>
+            {meusNumeros.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.nome}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label="Origem"
           className={cn(selectCls, "w-auto")}
