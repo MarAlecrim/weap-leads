@@ -226,20 +226,113 @@ def _engine_agente() -> Engine | None:
 
 
 def chaves_no_disparo(chaves: set[str]) -> set[str]:
-    """Quais telefones já estão no banco do agente (weap_sdr). Sem conexão, devolve vazio."""
+    """Quais telefones já estão no banco do agente (weap_sdr): contatados ou na fila do disparo.
+    Sem conexão, devolve vazio."""
     eng = _engine_agente()
     if not eng or not chaves:
         return set()
     try:
         with eng.connect() as c:
-            rs = c.execute(
-                text("SELECT chave FROM sdr_leads WHERE chave = ANY(:k)"),
-                {"k": list(chaves)},
-            )
-            return {r[0] for r in rs}
+            k = {"k": list(chaves)}
+            achou = {
+                r[0]
+                for r in c.execute(
+                    text("SELECT chave FROM sdr_leads WHERE chave = ANY(:k)"), k
+                )
+            }
+            if c.execute(text("SELECT to_regclass('sdr_fila') IS NOT NULL")).scalar():
+                achou |= {
+                    r[0]
+                    for r in c.execute(
+                        text("SELECT chave FROM sdr_fila WHERE chave = ANY(:k)"), k
+                    )
+                }
+            return achou
     except Exception:  # banco do agente fora do ar não pode derrubar a busca
         log.exception("Falha ao consultar o banco do agente")
         return set()
+
+
+class SemBancoDoAgente(RuntimeError):
+    """O CRM não está ligado ao banco do agente (AGENTE_DB_URL vazio)."""
+
+
+def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str, int]:
+    """Coloca os leads na fila do disparo (sdr_fila). Quem já está no disparo ou na fila fica de fora."""
+    eng = _engine_agente()
+    if not eng:
+        raise SemBancoDoAgente()
+    sem_zap = sum(1 for r in linhas if not r["whatsapp"])
+    ja = sum(1 for r in linhas if r["whatsapp"] and r["no_disparo"])
+    novos = [r for r in linhas if r["whatsapp"] and not r["no_disparo"]]
+    adicionados = 0
+    if novos:
+        with eng.begin() as c:
+            rs = c.execute(
+                text(
+                    """INSERT INTO sdr_fila (chave, telefone, nome_empresa, endereco, cidade, especialidades,
+                                            decisor, email, cnpj, nota, origem, criado_por)
+                       SELECT sdr_chave(t), t || '@s.whatsapp.net', n, en, ci, es, de, em, cn, no, 'receita', :por
+                         FROM unnest(CAST(:t AS text[]), CAST(:n AS text[]), CAST(:en AS text[]),
+                                     CAST(:ci AS text[]), CAST(:es AS text[]), CAST(:de AS text[]),
+                                     CAST(:em AS text[]), CAST(:cn AS text[]), CAST(:no AS int[]))
+                              AS x(t, n, en, ci, es, de, em, cn, no)
+                        WHERE sdr_chave(t) IS NOT NULL
+                       ON CONFLICT (chave) DO NOTHING
+                       RETURNING id"""
+                ),
+                {
+                    "t": ["55" + r["whatsapp"] for r in novos],
+                    "n": [r["nome"] for r in novos],
+                    "en": [r["endereco"] for r in novos],
+                    "ci": [r["cidade"] for r in novos],
+                    "es": [r["atividade"] for r in novos],
+                    "de": [r["decisor"] for r in novos],
+                    "em": [r["email"] for r in novos],
+                    "cn": [r["cnpj"] for r in novos],
+                    "no": [r["nota"] for r in novos],
+                    "por": criado_por,
+                },
+            )
+            adicionados = len(rs.fetchall())
+    return {
+        "adicionados": adicionados,
+        "ja_no_disparo": ja + (len(novos) - adicionados),
+        "sem_whatsapp": sem_zap,
+    }
+
+
+def resumo_fila() -> dict[str, int] | None:
+    """Quantos leads há em cada situação da fila do disparo. None se o banco do agente não estiver ligado."""
+    eng = _engine_agente()
+    if not eng:
+        return None
+    try:
+        with eng.connect() as c:
+            if not c.execute(
+                text("SELECT to_regclass('sdr_fila') IS NOT NULL")
+            ).scalar():
+                return None
+            r = (
+                c.execute(
+                    text(
+                        """SELECT count(*) FILTER (WHERE status = 'novo') AS aguardando,
+                              count(*) FILTER (WHERE status = 'pegando') AS enviando,
+                              count(*) FILTER (WHERE status = 'enviado'
+                                 AND enviado_em >= date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo')
+                                                   AT TIME ZONE 'America/Sao_Paulo') AS enviados_hoje,
+                              count(*) FILTER (WHERE status = 'enviado') AS enviados,
+                              count(*) FILTER (WHERE status IN ('pulado', 'erro')) AS pulados
+                         FROM sdr_fila"""
+                    )
+                )
+                .mappings()
+                .one()
+            )
+            return {k: int(v) for k, v in r.items()}
+    except Exception:
+        log.exception("Falha ao ler a fila do disparo")
+        return None
 
 
 def _marca(linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:

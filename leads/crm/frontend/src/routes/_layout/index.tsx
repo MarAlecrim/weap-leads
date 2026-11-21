@@ -13,6 +13,7 @@ import {
 } from "@/components/Leads/api"
 import { Ficha } from "@/components/Leads/Ficha"
 import { Filtros } from "@/components/Leads/Filtros"
+import { MandarDisparo } from "@/components/Leads/MandarDisparo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -122,6 +123,12 @@ function Busca() {
     placeholderData: keepPreviousData,
   })
 
+  const { data: fila } = useQuery({
+    queryKey: ["fila"],
+    queryFn: () => LeadsService.fila(),
+    refetchInterval: 60_000,
+  })
+
   const total = data?.count ?? 0
   const paginas = Math.max(1, Math.ceil(total / (data?.por_pagina ?? 50)))
   const linhas = data?.data ?? []
@@ -173,6 +180,12 @@ function Busca() {
         {isFetching && !isLoading && (
           <span className="text-sm text-muted-foreground">atualizando…</span>
         )}
+        {fila && (
+          <span className="text-sm text-muted-foreground">
+            Fila do disparo: {numero.format(fila.aguardando)} aguardando ·{" "}
+            {numero.format(fila.enviados_hoje)} enviados hoje
+          </span>
+        )}
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -212,9 +225,19 @@ function Busca() {
           >
             <Download /> Planilha dos marcados ({marcados.length})
           </Button>
-          <Button disabled={!total || baixando} onClick={() => baixar(false)}>
+          <Button
+            variant="outline"
+            disabled={!total || baixando}
+            onClick={() => baixar(false)}
+          >
             <Download /> Planilha de todos (até 3.000)
           </Button>
+          <MandarDisparo
+            filtros={filtros}
+            marcados={marcados}
+            total={total}
+            onFeito={() => setMarcados([])}
+          />
         </div>
       </div>
 

@@ -29,6 +29,20 @@ export type Cliente = {
     achou: boolean;
 };
 
+export type FilaResultado = {
+    adicionados: number;
+    ja_no_disparo: number;
+    sem_whatsapp: number;
+};
+
+export type FilaResumo = {
+    aguardando: number;
+    enviando: number;
+    enviados_hoje: number;
+    enviados: number;
+    pulados: number;
+};
+
 export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
@@ -234,12 +248,20 @@ export type LeadsBuscarResponse = (LeadsPagina);
 
 export type LeadsClientesResponse = (Array<Cliente>);
 
+export type LeadsFilaResponse = ((FilaResumo | null));
+
 export type LeadsFichaData = {
     cnpj: string;
     oferta?: string;
 };
 
 export type LeadsFichaResponse = (LeadFicha);
+
+export type LeadsMandarParaDisparoData = {
+    requestBody: PlanilhaPedido;
+};
+
+export type LeadsMandarParaDisparoResponse = (FilaResultado);
 
 export type LeadsPlanilhaData = {
     requestBody: PlanilhaPedido;

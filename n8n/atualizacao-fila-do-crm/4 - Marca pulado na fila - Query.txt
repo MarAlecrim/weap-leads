@@ -1,0 +1,13 @@
+-- Node Postgres "Marca pulado na fila" (substitui o "Marca como pulado na planilha"). Operation: Execute Query.
+-- Em feriado o lead volta para a fila (status 'novo', sem gastar tentativa) e sai no próximo dia útil.
+-- Nos outros casos (pediu para não receber, já conversando, já é lead de outro número) fica 'pulado'.
+UPDATE sdr_fila
+   SET status      = CASE WHEN $2 LIKE 'feriado:%' THEN 'novo' ELSE 'pulado' END,
+       tentativas  = CASE WHEN $2 LIKE 'feriado:%' THEN greatest(tentativas - 1, 0) ELSE tentativas END,
+       pego_em     = CASE WHEN $2 LIKE 'feriado:%' THEN NULL ELSE pego_em END,
+       motivo      = $2,
+       instancia   = CASE WHEN $2 LIKE 'feriado:%' THEN instancia ELSE $3 END
+ WHERE id = $1::bigint;
+
+-- Query Parameters:
+-- {{ [ $('Pega lead da fila').first().json.fila_id, String($json.motivo || ''), $('Dados_Evolution').first().json.instancia ] }}
