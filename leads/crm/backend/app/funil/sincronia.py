@@ -151,3 +151,30 @@ def sincronizar(session: Session, forcar: bool = False) -> bool:
         return False
     aplicar(session, linhas)
     return True
+
+
+def conversa(chave: str, limite: int = 300) -> dict[str, Any] | None:
+    """Mensagens do lead no banco do agente (as últimas `limite`, da mais antiga para a mais nova)
+    e o resumo que a IA guarda. None se o CRM não estiver ligado ao agente."""
+    eng = repo._engine_agente()
+    if not eng:
+        return None
+    with eng.connect() as c:
+        lead = c.execute(
+            text(
+                "SELECT id, resumo, ia_pausada, status FROM sdr_leads WHERE chave = :c"
+            ),
+            {"c": chave},
+        ).first()
+        if not lead:
+            return {"resumo": None, "mensagens": []}
+        msgs = c.execute(
+            text(
+                """SELECT * FROM (
+                     SELECT id, direcao, autor, texto, instancia, criado_em
+                       FROM sdr_mensagens WHERE lead_id = :id ORDER BY id DESC LIMIT :lim
+                   ) m ORDER BY id"""
+            ),
+            {"id": lead.id, "lim": limite},
+        ).mappings()
+        return {"resumo": lead.resumo, "mensagens": [dict(m) for m in msgs]}

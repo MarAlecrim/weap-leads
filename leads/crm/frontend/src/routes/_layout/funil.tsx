@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { type Card, type Coluna, FunilService } from "@/client"
 import { CardFunil } from "@/components/Funil/CardFunil"
-import { EditarCard } from "@/components/Funil/EditarCard"
+import { FichaFunil } from "@/components/Funil/FichaFunil"
 import { ORIGENS, reais, selectCls } from "@/components/Funil/util"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -257,7 +257,7 @@ function Funil() {
         </div>
       )}
 
-      <EditarCard
+      <FichaFunil
         card={editando?.card ?? null}
         etapaPedida={editando?.etapa}
         opcoes={opcoes}

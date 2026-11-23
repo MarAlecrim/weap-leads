@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilAtualizarData, FunilAtualizarResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class FunilService {
     /**
@@ -47,6 +47,27 @@ export class FunilService {
     }
     
     /**
+     * Ficha
+     * O card com a conversa do WhatsApp (banco do agente), o resumo da IA, o histórico e as notas.
+     * @param data The data for the request.
+     * @param data.negocioId
+     * @returns CardFicha Successful Response
+     * @throws ApiError
+     */
+    public static ficha(data: FunilFichaData): CancelablePromise<FunilFichaResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/funil/{negocio_id}',
+            path: {
+                negocio_id: data.negocioId
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Atualizar
      * @param data The data for the request.
      * @param data.negocioId
@@ -58,6 +79,29 @@ export class FunilService {
         return __request(OpenAPI, {
             method: 'PATCH',
             url: '/api/v1/funil/{negocio_id}',
+            path: {
+                negocio_id: data.negocioId
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Nova Nota
+     * @param data The data for the request.
+     * @param data.negocioId
+     * @param data.requestBody
+     * @returns CardFicha Successful Response
+     * @throws ApiError
+     */
+    public static novaNota(data: FunilNovaNotaData): CancelablePromise<FunilNovaNotaResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/funil/{negocio_id}/notas',
             path: {
                 negocio_id: data.negocioId
             },

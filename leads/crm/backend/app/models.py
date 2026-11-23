@@ -169,3 +169,22 @@ class NegocioHistorico(SQLModel, table=True):
         default_factory=get_datetime_utc,
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+
+
+class NegocioNota(SQLModel, table=True):
+    """Nota livre num card, com o nome de quem escreveu."""
+
+    __tablename__ = "crm_negocio_nota"
+
+    id: int | None = Field(default=None, primary_key=True)
+    negocio_id: int = Field(
+        sa_column=Column(
+            ForeignKey("crm_negocio.id", ondelete="CASCADE"), nullable=False, index=True
+        )
+    )
+    autor: str = Field(max_length=255)
+    texto: str = Field(max_length=4000)
+    criado_em: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
