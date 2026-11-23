@@ -279,7 +279,10 @@ def _linha(r: dict[str, Any], no_disparo: set[str]) -> dict[str, Any]:
 def _engine_agente() -> Engine | None:
     if not settings.AGENTE_DB_URL:
         return None
-    return create_engine(settings.AGENTE_DB_URL, pool_pre_ping=True, pool_size=2)
+    # no máximo 4 conexões por processo (2 processos): o usuário leads_crm tem limite no banco do agente
+    return create_engine(
+        settings.AGENTE_DB_URL, pool_pre_ping=True, pool_size=2, max_overflow=2
+    )
 
 
 def chaves_no_disparo(chaves: set[str]) -> set[str]:
