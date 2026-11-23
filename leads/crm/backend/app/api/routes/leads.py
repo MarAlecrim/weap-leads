@@ -99,6 +99,32 @@ class PlanilhaPedido(BaseModel):
     pular_disparo: bool = True
 
 
+class FilaResumo(BaseModel):
+    aguardando: int
+    enviando: int
+    enviados_hoje: int
+    enviados: int
+    pulados: int
+
+
+class FilaResultado(BaseModel):
+    adicionados: int
+    ja_no_disparo: int
+    sem_whatsapp: int
+
+
+def _linhas_do_pedido(session: SessionDep, pedido: PlanilhaPedido) -> list[dict]:
+    q = {k: v for k, v in pedido.filtros.items() if v not in (None, "")}
+    if "porte" in q and isinstance(q["porte"], str):
+        q["porte"] = [q["porte"]]
+    q.pop("pagina", None)
+    try:
+        f = _filtros(**q)
+    except TypeError:
+        raise HTTPException(status_code=422, detail="Filtro inválido")
+    return repo.para_planilha(session, f, pedido.cnpjs or None)
+
+
 def _filtros(
     oferta: str = "geral",
     nicho: str = "",
@@ -206,6 +232,13 @@ def clientes(session: SessionDep, _u: CurrentUser) -> Any:
     return [Cliente(**c) for c in repo.clientes(session)]
 
 
+@router.get("/fila", response_model=FilaResumo | None)
+def fila(_u: CurrentUser) -> Any:
+    """Situação da fila do disparo no banco do agente (vazio se não estiver ligado)."""
+    r = repo.resumo_fila()
+    return FilaResumo(**r) if r else None
+
+
 @router.get("/{cnpj}", response_model=LeadFicha)
 def ficha(
     session: SessionDep, _u: CurrentUser, cnpj: str, oferta: str = "geral"
@@ -217,20 +250,26 @@ def ficha(
     return LeadFicha(**r)
 
 
+@router.post("/disparo", response_model=FilaResultado)
+def mandar_para_disparo(
+    session: SessionDep, u: CurrentUser, pedido: PlanilhaPedido
+) -> Any:
+    """Coloca os leads (marcados ou do filtro, até 3.000) na fila do disparo do n8n."""
+    linhas = _linhas_do_pedido(session, pedido)
+    try:
+        return FilaResultado(**repo.mandar_para_fila(linhas, u.email))
+    except repo.SemBancoDoAgente:
+        raise HTTPException(
+            status_code=503, detail="O CRM ainda não está ligado ao banco do disparo."
+        )
+
+
 @router.post("/planilha")
 def planilha(
     session: SessionDep, _u: CurrentUser, pedido: PlanilhaPedido
 ) -> StreamingResponse:
     """CSV no mesmo formato da planilha do disparo (só quem tem celular)."""
-    q = {k: v for k, v in pedido.filtros.items() if v not in (None, "")}
-    if "porte" in q and isinstance(q["porte"], str):
-        q["porte"] = [q["porte"]]
-    q.pop("pagina", None)
-    try:
-        f = _filtros(**q)
-    except TypeError:
-        raise HTTPException(status_code=422, detail="Filtro inválido")
-    linhas = repo.para_planilha(session, f, pedido.cnpjs or None)
+    linhas = _linhas_do_pedido(session, pedido)
     if pedido.pular_disparo:
         linhas = [r for r in linhas if not r["no_disparo"]]
     linhas = [r for r in linhas if r["whatsapp"]]
@@ -273,7 +312,7 @@ def planilha(
                 r["nota"],
             ]
         )
-    nome = f"leads-{f.nicho or 'busca'}-{datetime.now():%Y-%m-%d-%H%M}.csv"
+    nome = f"leads-{pedido.filtros.get('nicho') or 'busca'}-{datetime.now():%Y-%m-%d-%H%M}.csv"
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv; charset=utf-8",

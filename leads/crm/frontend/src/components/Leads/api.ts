@@ -68,14 +68,9 @@ export function paraApi(f: FiltrosBusca) {
   }
 }
 
-/** Baixa o CSV no formato da planilha do disparo. */
-export async function baixarPlanilha(
-  f: FiltrosBusca,
-  cnpjs: string[],
-  pularDisparo: boolean,
-) {
-  const token = localStorage.getItem("access_token") || ""
-  const filtros: Record<string, unknown> = {
+/** Filtros no formato que a planilha e o "Mandar para o disparo" recebem. */
+export function filtrosDoPedido(f: FiltrosBusca): Record<string, unknown> {
+  return {
     ...f,
     capital_min: reais(f.capital_min) ?? null,
     capital_max: reais(f.capital_max) ?? null,
@@ -83,6 +78,16 @@ export async function baixarPlanilha(
     anos_max: f.anos_max === "" ? null : Number(f.anos_max),
     nota_min: f.nota_min === "" ? null : Number(f.nota_min),
   }
+}
+
+/** Baixa o CSV no formato da planilha do disparo. */
+export async function baixarPlanilha(
+  f: FiltrosBusca,
+  cnpjs: string[],
+  pularDisparo: boolean,
+) {
+  const token = localStorage.getItem("access_token") || ""
+  const filtros = filtrosDoPedido(f)
   const r = await fetch(`${OpenAPI.BASE}/api/v1/leads/planilha`, {
     method: "POST",
     headers: {
