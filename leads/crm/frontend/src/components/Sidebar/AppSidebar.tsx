@@ -1,4 +1,11 @@
-import { Building2, Kanban, LayoutDashboard, Search, Users } from "lucide-react"
+import {
+  Building2,
+  Kanban,
+  LayoutDashboard,
+  MessagesSquare,
+  Search,
+  Users,
+} from "lucide-react"
 
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
@@ -15,6 +22,7 @@ import { User } from "./User"
 const baseItems: Item[] = [
   { icon: LayoutDashboard, title: "Painel", path: "/" },
   { icon: Kanban, title: "Funil", path: "/funil" },
+  { icon: MessagesSquare, title: "Conversas", path: "/conversas" },
   { icon: Search, title: "Busca de leads", path: "/busca" },
   { icon: Building2, title: "Clientes atuais", path: "/clientes" },
 ]

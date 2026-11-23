@@ -171,3 +171,25 @@ O cálculo leva alguns minutos. Enquanto ele roda, a busca usa a tabela anterior
 ```
 cd /opt/weap-leads && docker compose up -d --build api
 ```
+
+## Atualização: caixa de conversas (fase 3a e 3b)
+
+Menu novo **Conversas**: as conversas do WhatsApp de todos os números, da mais recente para a mais antiga. Tem filtro por número, "Só não lidas" e busca por nome ou telefone. O vendedor vê só os números dele e os leads em que é o responsável. A lista se atualiza a cada 10 s e a conversa aberta a cada 5 s.
+
+Quem responde pela caixa (ou pela ficha do card no Funil) manda a mensagem pelo mesmo número que conversa com o lead. A IA pausa para esse lead, igual a quando alguém escreve pelo celular. O botão "Devolver para a IA" faz ela voltar. Quem pediu para não receber mensagens não recebe resposta.
+
+Para ligar, siga os passos abaixo, um bloco por vez.
+
+1. No servidor do n8n, rode o SQL `n8n/atualizacao-caixa-conversas/1 - Rodar no banco.sql` no banco weap_sdr, como postgres. Ele deixa o usuário do CRM gravar a mensagem e pausar ou retomar a IA, e nada além disso.
+
+2. No servidor do CRM, coloque no `.env` (a chave é a mesma que o n8n usa na Evolution, e não vai para o código nem para o chat):
+```
+EVOLUTION_URL=https://endereco-da-evolution
+EVOLUTION_API_KEY=a-chave-da-evolution
+```
+Sem a URL, o CRM usa a `evolution_url` da tabela `sdr_config`. Sem a chave, a caixa funciona só para leitura.
+
+3. Atualize a API (a migração 0004 cria a tabela de "lidas") e o site:
+```
+cd /opt/weap-leads && docker compose up -d --build api frontend
+```

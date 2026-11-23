@@ -16,6 +16,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutFunilRouteImport } from './routes/_layout/funil'
+import { Route as LayoutConversasRouteImport } from './routes/_layout/conversas'
 import { Route as LayoutClientesRouteImport } from './routes/_layout/clientes'
 import { Route as LayoutBuscaRouteImport } from './routes/_layout/busca'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
@@ -54,6 +55,11 @@ const LayoutFunilRoute = LayoutFunilRouteImport.update({
   path: '/funil',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutConversasRoute = LayoutConversasRouteImport.update({
+  id: '/conversas',
+  path: '/conversas',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutClientesRoute = LayoutClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof LayoutAdminRoute
   '/busca': typeof LayoutBuscaRoute
   '/clientes': typeof LayoutClientesRoute
+  '/conversas': typeof LayoutConversasRoute
   '/funil': typeof LayoutFunilRoute
   '/settings': typeof LayoutSettingsRoute
 }
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/admin': typeof LayoutAdminRoute
   '/busca': typeof LayoutBuscaRoute
   '/clientes': typeof LayoutClientesRoute
+  '/conversas': typeof LayoutConversasRoute
   '/funil': typeof LayoutFunilRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/busca': typeof LayoutBuscaRoute
   '/_layout/clientes': typeof LayoutClientesRoute
+  '/_layout/conversas': typeof LayoutConversasRoute
   '/_layout/funil': typeof LayoutFunilRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/busca'
     | '/clientes'
+    | '/conversas'
     | '/funil'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/busca'
     | '/clientes'
+    | '/conversas'
     | '/funil'
     | '/settings'
     | '/'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/_layout/admin'
     | '/_layout/busca'
     | '/_layout/clientes'
+    | '/_layout/conversas'
     | '/_layout/funil'
     | '/_layout/settings'
     | '/_layout/'
@@ -200,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutFunilRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/conversas': {
+      id: '/_layout/conversas'
+      path: '/conversas'
+      fullPath: '/conversas'
+      preLoaderRoute: typeof LayoutConversasRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/clientes': {
       id: '/_layout/clientes'
       path: '/clientes'
@@ -228,6 +247,7 @@ interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutBuscaRoute: typeof LayoutBuscaRoute
   LayoutClientesRoute: typeof LayoutClientesRoute
+  LayoutConversasRoute: typeof LayoutConversasRoute
   LayoutFunilRoute: typeof LayoutFunilRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
@@ -237,6 +257,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutBuscaRoute: LayoutBuscaRoute,
   LayoutClientesRoute: LayoutClientesRoute,
+  LayoutConversasRoute: LayoutConversasRoute,
   LayoutFunilRoute: LayoutFunilRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,

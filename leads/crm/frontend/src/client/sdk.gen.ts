@@ -3,7 +3,103 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { ConversasListaData, ConversasListaResponse, ConversasAbrirData, ConversasAbrirResponse, ConversasResponderData, ConversasResponderResponse, ConversasRetomarData, ConversasRetomarResponse, FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+
+export class ConversasService {
+    /**
+     * Lista
+     * Conversas da mais recente para a mais antiga. Vendedor vê só os números dele e os
+     * leads em que é o responsável.
+     * @param data The data for the request.
+     * @param data.instancia
+     * @param data.naoLidas
+     * @param data.busca
+     * @param data.antes
+     * @returns ListaConversas Successful Response
+     * @throws ApiError
+     */
+    public static lista(data: ConversasListaData = {}): CancelablePromise<ConversasListaResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/conversas/',
+            query: {
+                instancia: data.instancia,
+                nao_lidas: data.naoLidas,
+                busca: data.busca,
+                antes: data.antes
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Abrir
+     * Mensagens do lead (as últimas 300) e o resumo da IA. Marca como lida.
+     * @param data The data for the request.
+     * @param data.chave
+     * @returns Conversa Successful Response
+     * @throws ApiError
+     */
+    public static abrir(data: ConversasAbrirData): CancelablePromise<ConversasAbrirResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/conversas/{chave}',
+            path: {
+                chave: data.chave
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Responder
+     * Manda a resposta pelo número que conversa com o lead e pausa a IA desse lead.
+     * @param data The data for the request.
+     * @param data.chave
+     * @param data.requestBody
+     * @returns Conversa Successful Response
+     * @throws ApiError
+     */
+    public static responder(data: ConversasResponderData): CancelablePromise<ConversasResponderResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/conversas/{chave}/responder',
+            path: {
+                chave: data.chave
+            },
+            body: data.requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
+     * Retomar
+     * A IA volta a responder esse lead.
+     * @param data The data for the request.
+     * @param data.chave
+     * @returns Conversa Successful Response
+     * @throws ApiError
+     */
+    public static retomar(data: ConversasRetomarData): CancelablePromise<ConversasRetomarResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/conversas/{chave}/retomar',
+            path: {
+                chave: data.chave
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+}
 
 export class FunilService {
     /**
