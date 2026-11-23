@@ -142,3 +142,32 @@ cd /opt/weap-leads && docker compose up -d --build api web
 ```
 
 Depois, em **Admin**, edite cada usuário e escolha o perfil e os números. O vendedor vê só os leads dos números dele e os que forem passados para ele.
+
+## Atualização: ficha do lead no Funil (fase 2b)
+
+Clicar num card abre a ficha: etapa, valor, responsável e próxima ação, os dados da Receita, a conversa do WhatsApp (só leitura, lida do banco do agente quando a ficha abre), o resumo da IA, as notas e o histórico. A tabela de notas é criada sozinha quando a API sobe.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
+
+## Atualização: painel na tela inicial
+
+A primeira tela passa a ser o **Painel**: fila do disparo, contatados, respostas, interessados, propostas, ganhos, clientes atuais, o funil por etapa, o disparo dos últimos 14 dias, os números por WhatsApp e os leads que precisam de atenção. O vendedor vê só os números dele. A consulta da base foi para o menu **Busca de leads** (`/busca`). No Funil, cada coluna abre com 20 cards e um botão **Carregar mais**. Não há migração.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
+
+## Atualização: busca rápida (nota guardada)
+
+A busca não calcula mais a nota de todas as empresas a cada vez. A nota de cada oferta fica guardada na tabela `receita.notas` (cerca de 2 milhões de linhas e 0,5 GB de disco). A própria API cria e refaz essa tabela em segundo plano quando:
+- a importação mensal termina;
+- os clientes atuais mudam;
+- as cidades atendidas mudam.
+
+O cálculo leva alguns minutos. Enquanto ele roda, a busca usa a tabela anterior. Na primeira vez, quando ainda não existe tabela, a busca calcula a nota na hora, como antes. Não há migração.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api
+```

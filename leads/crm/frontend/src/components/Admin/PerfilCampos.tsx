@@ -73,8 +73,10 @@ export function PerfilCampos<T extends FieldValues>({
                     key={n.id}
                     className="flex items-center gap-2 text-sm"
                     title={n.id}
+                    htmlFor={`numero-${n.id}`}
                   >
                     <Checkbox
+                      id={`numero-${n.id}`}
                       checked={marcados.includes(n.id)}
                       onCheckedChange={(v) =>
                         field.onChange(

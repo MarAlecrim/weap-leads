@@ -31,6 +31,34 @@ export type Card = {
     perdido_motivo: (string | null);
 };
 
+export type CardFicha = {
+    id: number;
+    nome: string;
+    cnpj: (string | null);
+    cidade: (string | null);
+    origem: string;
+    nota: (number | null);
+    instancia: (string | null);
+    numero: (string | null);
+    responsavel_id: (string | null);
+    responsavel: (string | null);
+    etapa: string;
+    valor_cents: (number | null);
+    servico: (string | null);
+    dias_na_etapa: number;
+    dias_sem_resposta: (number | null);
+    ia_pausada: boolean;
+    proxima_acao: (string | null);
+    proxima_acao_em: (string | null);
+    perdido_motivo: (string | null);
+    telefone: (string | null);
+    resumo: (string | null);
+    mensagens: Array<Mensagem>;
+    conversa_disponivel: boolean;
+    historico: Array<Evento>;
+    notas: Array<Nota>;
+};
+
 export type Cidade = {
     id: string;
     nome: string;
@@ -57,6 +85,26 @@ export type Coluna = {
     total: number;
     valor_cents: number;
     cards: Array<Card>;
+};
+
+export type Dia = {
+    dia: string;
+    enviados: number;
+    respostas: number;
+};
+
+export type EtapaContagem = {
+    etapa: string;
+    nome: string;
+    total: number;
+    valor_cents: number;
+};
+
+export type Evento = {
+    de: (string | null);
+    para: string;
+    autor: string;
+    criado_em: string;
 };
 
 export type FilaResultado = {
@@ -153,6 +201,15 @@ export type LeadsPagina = {
     por_pagina: number;
 };
 
+export type Mensagem = {
+    id: number;
+    direcao: string;
+    autor: string;
+    texto: (string | null);
+    instancia: (string | null);
+    criado_em: string;
+};
+
 export type Message = {
     message: string;
 };
@@ -170,6 +227,17 @@ export type NegocioAtualiza = {
 export type NewPassword = {
     token: string;
     new_password: string;
+};
+
+export type Nota = {
+    id: number;
+    autor: string;
+    texto: string;
+    criado_em: string;
+};
+
+export type NovaNota = {
+    texto: string;
 };
 
 export type Opcao = {
@@ -190,6 +258,25 @@ export type Opcoes = {
     };
 };
 
+export type Painel = {
+    na_fila: (number | null);
+    enviados_hoje: (number | null);
+    contatados: number;
+    responderam: number;
+    interessados: number;
+    reunioes: number;
+    abertos_valor_cents: number;
+    abertos: number;
+    ganhos: number;
+    ganhos_valor_cents: number;
+    clientes_atuais: (number | null);
+    etapas: Array<EtapaContagem>;
+    por_dia: (Array<Dia> | null);
+    por_numero: Array<PorNumero>;
+    atencao: Array<Card>;
+    atencao_total: number;
+};
+
 export type Perfil = {
     id: string;
     nome: string;
@@ -202,6 +289,14 @@ export type PlanilhaPedido = {
     };
     cnpjs?: Array<(string)>;
     pular_disparo?: boolean;
+};
+
+export type PorNumero = {
+    instancia: string;
+    numero: string;
+    contatados: number;
+    responderam: number;
+    interessados: number;
 };
 
 export type PrivateUserCreate = {
@@ -297,6 +392,10 @@ export type FunilOpcoesResponse = (FunilOpcoes);
 export type FunilFunilData = {
     busca?: string;
     instancia?: (string | null);
+    /**
+     * ex.: "contatado:60,respondeu:40"
+     */
+    limites?: string;
     origem?: (string | null);
     parados?: boolean;
     responsavelId?: (string | null);
@@ -304,12 +403,25 @@ export type FunilFunilData = {
 
 export type FunilFunilResponse = (Funil);
 
+export type FunilFichaData = {
+    negocioId: number;
+};
+
+export type FunilFichaResponse = (CardFicha);
+
 export type FunilAtualizarData = {
     negocioId: number;
     requestBody: NegocioAtualiza;
 };
 
 export type FunilAtualizarResponse = (Card);
+
+export type FunilNovaNotaData = {
+    negocioId: number;
+    requestBody: NovaNota;
+};
+
+export type FunilNovaNotaResponse = (CardFicha);
 
 export type LeadsOpcoesResponse = (Opcoes);
 
@@ -383,6 +495,8 @@ export type LoginRecoverPasswordHtmlContentData = {
 };
 
 export type LoginRecoverPasswordHtmlContentResponse = (string);
+
+export type PainelPainelResponse = (Painel);
 
 export type PrivateCreateUserData = {
     requestBody: PrivateUserCreate;

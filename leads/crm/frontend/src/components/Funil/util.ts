@@ -62,3 +62,16 @@ export const cnpjFmt = (c: string | null | undefined) =>
   c?.length === 14
     ? c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5")
     : (c ?? "")
+
+/** "5543999998888@s.whatsapp.net" -> "(43) 99999-8888" */
+export function foneFmt(t: string | null | undefined) {
+  const d = (t ?? "")
+    .split("@")[0]
+    .replace(/\D/g, "")
+    .replace(/^55(?=\d{10,11}$)/, "")
+  if (d.length === 11)
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10)
+    return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return d
+}

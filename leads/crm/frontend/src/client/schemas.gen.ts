@@ -234,6 +234,230 @@ export const CardSchema = {
     title: 'Card'
 } as const;
 
+export const CardFichaSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        cnpj: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cnpj'
+        },
+        cidade: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Cidade'
+        },
+        origem: {
+            type: 'string',
+            title: 'Origem'
+        },
+        nota: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Nota'
+        },
+        instancia: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Instancia'
+        },
+        numero: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Numero'
+        },
+        responsavel_id: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'uuid'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Responsavel Id'
+        },
+        responsavel: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Responsavel'
+        },
+        etapa: {
+            type: 'string',
+            title: 'Etapa'
+        },
+        valor_cents: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Valor Cents'
+        },
+        servico: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Servico'
+        },
+        dias_na_etapa: {
+            type: 'integer',
+            title: 'Dias Na Etapa'
+        },
+        dias_sem_resposta: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Dias Sem Resposta'
+        },
+        ia_pausada: {
+            type: 'boolean',
+            title: 'Ia Pausada'
+        },
+        proxima_acao: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Proxima Acao'
+        },
+        proxima_acao_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Proxima Acao Em'
+        },
+        perdido_motivo: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Perdido Motivo'
+        },
+        telefone: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Telefone'
+        },
+        resumo: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Resumo'
+        },
+        mensagens: {
+            items: {
+                '$ref': '#/components/schemas/Mensagem'
+            },
+            type: 'array',
+            title: 'Mensagens'
+        },
+        conversa_disponivel: {
+            type: 'boolean',
+            title: 'Conversa Disponivel'
+        },
+        historico: {
+            items: {
+                '$ref': '#/components/schemas/Evento'
+            },
+            type: 'array',
+            title: 'Historico'
+        },
+        notas: {
+            items: {
+                '$ref': '#/components/schemas/Nota'
+            },
+            type: 'array',
+            title: 'Notas'
+        }
+    },
+    type: 'object',
+    required: ['id', 'nome', 'cnpj', 'cidade', 'origem', 'nota', 'instancia', 'numero', 'responsavel_id', 'responsavel', 'etapa', 'valor_cents', 'servico', 'dias_na_etapa', 'dias_sem_resposta', 'ia_pausada', 'proxima_acao', 'proxima_acao_em', 'perdido_motivo', 'telefone', 'resumo', 'mensagens', 'conversa_disponivel', 'historico', 'notas'],
+    title: 'CardFicha'
+} as const;
+
 export const CidadeSchema = {
     properties: {
         id: {
@@ -352,6 +576,83 @@ export const ColunaSchema = {
     type: 'object',
     required: ['etapa', 'nome', 'total', 'valor_cents', 'cards'],
     title: 'Coluna'
+} as const;
+
+export const DiaSchema = {
+    properties: {
+        dia: {
+            type: 'string',
+            format: 'date',
+            title: 'Dia'
+        },
+        enviados: {
+            type: 'integer',
+            title: 'Enviados'
+        },
+        respostas: {
+            type: 'integer',
+            title: 'Respostas'
+        }
+    },
+    type: 'object',
+    required: ['dia', 'enviados', 'respostas'],
+    title: 'Dia'
+} as const;
+
+export const EtapaContagemSchema = {
+    properties: {
+        etapa: {
+            type: 'string',
+            title: 'Etapa'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        total: {
+            type: 'integer',
+            title: 'Total'
+        },
+        valor_cents: {
+            type: 'integer',
+            title: 'Valor Cents'
+        }
+    },
+    type: 'object',
+    required: ['etapa', 'nome', 'total', 'valor_cents'],
+    title: 'EtapaContagem'
+} as const;
+
+export const EventoSchema = {
+    properties: {
+        de: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'De'
+        },
+        para: {
+            type: 'string',
+            title: 'Para'
+        },
+        autor: {
+            type: 'string',
+            title: 'Autor'
+        },
+        criado_em: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Criado Em'
+        }
+    },
+    type: 'object',
+    required: ['de', 'para', 'autor', 'criado_em'],
+    title: 'Evento'
 } as const;
 
 export const FilaResultadoSchema = {
@@ -768,6 +1069,53 @@ export const LeadsPaginaSchema = {
     title: 'LeadsPagina'
 } as const;
 
+export const MensagemSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        direcao: {
+            type: 'string',
+            title: 'Direcao'
+        },
+        autor: {
+            type: 'string',
+            title: 'Autor'
+        },
+        texto: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Texto'
+        },
+        instancia: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Instancia'
+        },
+        criado_em: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Criado Em'
+        }
+    },
+    type: 'object',
+    required: ['id', 'direcao', 'autor', 'texto', 'instancia', 'criado_em'],
+    title: 'Mensagem'
+} as const;
+
 export const MessageSchema = {
     properties: {
         message: {
@@ -884,6 +1232,45 @@ export const NewPasswordSchema = {
     title: 'NewPassword'
 } as const;
 
+export const NotaSchema = {
+    properties: {
+        id: {
+            type: 'integer',
+            title: 'Id'
+        },
+        autor: {
+            type: 'string',
+            title: 'Autor'
+        },
+        texto: {
+            type: 'string',
+            title: 'Texto'
+        },
+        criado_em: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Criado Em'
+        }
+    },
+    type: 'object',
+    required: ['id', 'autor', 'texto', 'criado_em'],
+    title: 'Nota'
+} as const;
+
+export const NovaNotaSchema = {
+    properties: {
+        texto: {
+            type: 'string',
+            maxLength: 4000,
+            minLength: 1,
+            title: 'Texto'
+        }
+    },
+    type: 'object',
+    required: ['texto'],
+    title: 'NovaNota'
+} as const;
+
 export const OpcaoSchema = {
     properties: {
         id: {
@@ -950,6 +1337,118 @@ export const OpcoesSchema = {
     title: 'Opcoes'
 } as const;
 
+export const PainelSchema = {
+    properties: {
+        na_fila: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Na Fila'
+        },
+        enviados_hoje: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Enviados Hoje'
+        },
+        contatados: {
+            type: 'integer',
+            title: 'Contatados'
+        },
+        responderam: {
+            type: 'integer',
+            title: 'Responderam'
+        },
+        interessados: {
+            type: 'integer',
+            title: 'Interessados'
+        },
+        reunioes: {
+            type: 'integer',
+            title: 'Reunioes'
+        },
+        abertos_valor_cents: {
+            type: 'integer',
+            title: 'Abertos Valor Cents'
+        },
+        abertos: {
+            type: 'integer',
+            title: 'Abertos'
+        },
+        ganhos: {
+            type: 'integer',
+            title: 'Ganhos'
+        },
+        ganhos_valor_cents: {
+            type: 'integer',
+            title: 'Ganhos Valor Cents'
+        },
+        clientes_atuais: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Clientes Atuais'
+        },
+        etapas: {
+            items: {
+                '$ref': '#/components/schemas/EtapaContagem'
+            },
+            type: 'array',
+            title: 'Etapas'
+        },
+        por_dia: {
+            anyOf: [
+                {
+                    items: {
+                        '$ref': '#/components/schemas/Dia'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Por Dia'
+        },
+        por_numero: {
+            items: {
+                '$ref': '#/components/schemas/PorNumero'
+            },
+            type: 'array',
+            title: 'Por Numero'
+        },
+        atencao: {
+            items: {
+                '$ref': '#/components/schemas/Card'
+            },
+            type: 'array',
+            title: 'Atencao'
+        },
+        atencao_total: {
+            type: 'integer',
+            title: 'Atencao Total'
+        }
+    },
+    type: 'object',
+    required: ['na_fila', 'enviados_hoje', 'contatados', 'responderam', 'interessados', 'reunioes', 'abertos_valor_cents', 'abertos', 'ganhos', 'ganhos_valor_cents', 'clientes_atuais', 'etapas', 'por_dia', 'por_numero', 'atencao', 'atencao_total'],
+    title: 'Painel'
+} as const;
+
 export const PerfilSchema = {
     properties: {
         id: {
@@ -994,6 +1493,34 @@ export const PlanilhaPedidoSchema = {
     },
     type: 'object',
     title: 'PlanilhaPedido'
+} as const;
+
+export const PorNumeroSchema = {
+    properties: {
+        instancia: {
+            type: 'string',
+            title: 'Instancia'
+        },
+        numero: {
+            type: 'string',
+            title: 'Numero'
+        },
+        contatados: {
+            type: 'integer',
+            title: 'Contatados'
+        },
+        responderam: {
+            type: 'integer',
+            title: 'Responderam'
+        },
+        interessados: {
+            type: 'integer',
+            title: 'Interessados'
+        }
+    },
+    type: 'object',
+    required: ['instancia', 'numero', 'contatados', 'responderam', 'interessados'],
+    title: 'PorNumero'
 } as const;
 
 export const PrivateUserCreateSchema = {

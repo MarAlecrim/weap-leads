@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlmodel import col, select
 from sqlmodel.sql.expression import SelectOfScalar
@@ -14,11 +14,12 @@ from sqlmodel.sql.expression import SelectOfScalar
 from app.api.deps import CurrentUser, SessionDep
 from app.funil import etapas, sincronia
 from app.leads import repo
-from app.models import Negocio, NegocioHistorico, User
+from app.models import Negocio, NegocioHistorico, NegocioNota, User
 
 router = APIRouter(prefix="/funil", tags=["funil"])
 
-POR_COLUNA = 100
+POR_COLUNA = 20  # cards por coluna na 1ª carga; "Carregar mais" pede mais por etapa
+MAX_COLUNA = 1000
 
 
 class Card(BaseModel):
@@ -71,6 +72,42 @@ class FunilOpcoes(BaseModel):
     motivos: list[str]
     responsaveis: list[Item]
     numeros: list[Item]
+
+
+class Mensagem(BaseModel):
+    id: int
+    direcao: str
+    autor: str
+    texto: str | None
+    instancia: str | None
+    criado_em: datetime
+
+
+class Evento(BaseModel):
+    de: str | None
+    para: str
+    autor: str
+    criado_em: datetime
+
+
+class Nota(BaseModel):
+    id: int
+    autor: str
+    texto: str
+    criado_em: datetime
+
+
+class NovaNota(BaseModel):
+    texto: str = Field(min_length=1, max_length=4000)
+
+
+class CardFicha(Card):
+    telefone: str | None
+    resumo: str | None
+    mensagens: list[Mensagem]
+    conversa_disponivel: bool
+    historico: list[Evento]
+    notas: list[Nota]
 
 
 class NegocioAtualiza(BaseModel):
@@ -193,8 +230,16 @@ def funil(
     origem: str | None = None,
     parados: bool = False,
     busca: str = Query(default="", max_length=100),
+    limites: str = Query(
+        default="", max_length=300, description='ex.: "contatado:60,respondeu:40"'
+    ),
 ) -> Any:
     sincronia.sincronizar(session)
+    limite: dict[str, int] = {}
+    for parte in limites.split(","):
+        e, _, n = parte.partition(":")
+        if e in etapas.NOMES and n.isdigit():
+            limite[e] = min(int(n), MAX_COLUNA)
     stmt = _visiveis(select(Negocio), u)
     if responsavel_id:
         stmt = stmt.where(Negocio.responsavel_id == responsavel_id)
@@ -235,10 +280,72 @@ def funil(
                 nome=nome,
                 total=len(da),
                 valor_cents=sum(c.valor_cents or 0 for c in da),
-                cards=da[:POR_COLUNA],
+                cards=da[: limite.get(e, POR_COLUNA)],
             )
         )
     return Funil(colunas=colunas, ligado_ao_agente=repo._engine_agente() is not None)
+
+
+def _meu(session: SessionDep, u: User, negocio_id: int) -> Negocio:
+    n = session.exec(
+        _visiveis(select(Negocio).where(Negocio.id == negocio_id), u)
+    ).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Card não encontrado.")
+    return n
+
+
+def _ficha(session: SessionDep, n: Negocio) -> CardFicha:
+    agora = datetime.now(timezone.utc)
+    try:
+        conv = sincronia.conversa(n.chave)
+    except Exception:
+        conv = None
+    hist = session.exec(
+        select(NegocioHistorico)
+        .where(NegocioHistorico.negocio_id == n.id)
+        .order_by(col(NegocioHistorico.id))
+    ).all()
+    notas = session.exec(
+        select(NegocioNota)
+        .where(NegocioNota.negocio_id == n.id)
+        .order_by(col(NegocioNota.id).desc())
+    ).all()
+    return CardFicha(
+        **_card(n, _nomes(session), agora).model_dump(),
+        telefone=n.telefone,
+        resumo=(conv or {}).get("resumo"),
+        mensagens=[Mensagem(**m) for m in (conv or {}).get("mensagens", [])],
+        conversa_disponivel=conv is not None,
+        historico=[
+            Evento(de=h.de, para=h.para, autor=h.autor, criado_em=h.criado_em)
+            for h in hist
+        ],
+        notas=[
+            Nota(id=x.id or 0, autor=x.autor, texto=x.texto, criado_em=x.criado_em)
+            for x in notas
+        ],
+    )
+
+
+@router.get("/{negocio_id}", response_model=CardFicha)
+def ficha(session: SessionDep, u: CurrentUser, negocio_id: int) -> Any:
+    """O card com a conversa do WhatsApp (banco do agente), o resumo da IA, o histórico e as notas."""
+    return _ficha(session, _meu(session, u, negocio_id))
+
+
+@router.post("/{negocio_id}/notas", response_model=CardFicha)
+def nova_nota(
+    session: SessionDep, u: CurrentUser, negocio_id: int, nota: NovaNota
+) -> Any:
+    n = _meu(session, u, negocio_id)
+    session.add(
+        NegocioNota(
+            negocio_id=n.id or 0, autor=u.full_name or u.email, texto=nota.texto.strip()
+        )
+    )
+    session.commit()
+    return _ficha(session, n)
 
 
 @router.patch("/{negocio_id}", response_model=Card)

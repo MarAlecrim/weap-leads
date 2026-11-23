@@ -264,3 +264,91 @@ def test_ler_agente_de_verdade(db: Session, monkeypatch: pytest.MonkeyPatch) -> 
         with eng.begin() as c:
             c.execute(text("DELETE FROM sdr_leads WHERE chave LIKE '5599%'"))
             c.execute(text("DELETE FROM sdr_fila WHERE chave LIKE '5599%'"))
+
+
+@pytest.mark.usefixtures("limpo")
+def test_ficha_com_notas(
+    client: TestClient, db: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    sincronia.aplicar(db, [_linha("5599000000009", status="respondeu")])
+    n = _negocio(db, "5599000000009")
+    r = client.get(f"{API}/{n.id}", headers=superuser_token_headers)
+    assert r.status_code == 200
+    f = r.json()
+    assert f["conversa_disponivel"] is False and f["mensagens"] == []
+    assert [h["para"] for h in f["historico"]] == ["respondeu"]
+    r = client.post(
+        f"{API}/{n.id}/notas",
+        headers=superuser_token_headers,
+        json={"texto": "Tem 2 unidades"},
+    )
+    assert r.status_code == 200
+    assert r.json()["notas"][0]["texto"] == "Tem 2 unidades"
+    assert (
+        client.post(
+            f"{API}/{n.id}/notas", headers=superuser_token_headers, json={"texto": ""}
+        ).status_code
+        == 422
+    )
+
+
+@pytest.mark.usefixtures("limpo")
+def test_conversa_do_agente(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    from sqlalchemy import create_engine, text
+
+    from app.leads import repo
+
+    url = os.environ.get("AGENTE_DB_URL_TESTE", "")
+    if not url:
+        pytest.skip("sem banco do agente de teste")
+    eng = create_engine(url)
+    with eng.begin() as c:
+        c.execute(text("DELETE FROM sdr_leads WHERE chave LIKE '5599%'"))
+        lid = c.execute(
+            text(
+                "INSERT INTO sdr_leads (chave, resumo) VALUES ('5599000000010', 'Quer site') RETURNING id"
+            )
+        ).scalar()
+        c.execute(
+            text(
+                "INSERT INTO sdr_mensagens (lead_id, direcao, autor, texto) VALUES "
+                "(:l, 'out', 'disparo', 'Oi!'), (:l, 'in', 'lead', 'Quanto custa?')"
+            ),
+            {"l": lid},
+        )
+    monkeypatch.setattr(settings, "AGENTE_DB_URL", url)
+    repo._engine_agente.cache_clear()
+    try:
+        conv = sincronia.conversa("5599000000010")
+        assert conv is not None and conv["resumo"] == "Quer site"
+        assert [m["autor"] for m in conv["mensagens"]] == ["disparo", "lead"]
+        assert sincronia.conversa("5599000000099") == {"resumo": None, "mensagens": []}
+    finally:
+        repo._engine_agente.cache_clear()
+        with eng.begin() as c:
+            c.execute(text("DELETE FROM sdr_leads WHERE chave LIKE '5599%'"))
+
+
+@pytest.mark.usefixtures("limpo")
+def test_painel(
+    client: TestClient, db: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    agora = datetime.now(timezone.utc)
+    sincronia.aplicar(
+        db,
+        [
+            _linha("5599000000011", status="contatado"),
+            _linha("5599000000012", status="respondeu", ultima_resposta_em=agora),
+            _linha("5599000000013", status="sem_interesse", ultima_resposta_em=agora),
+            _linha("5599000000014", fila_status="novo"),
+        ],
+    )
+    r = client.get(f"{settings.API_V1_STR}/painel/", headers=superuser_token_headers)
+    assert r.status_code == 200
+    p = r.json()
+    assert p["contatados"] >= 3 and p["responderam"] >= 2
+    assert [e["etapa"] for e in p["etapas"]] == [e for e, _ in etapas.ETAPAS]
+    num = next(x for x in p["por_numero"] if x["instancia"] == "Teste-1111")
+    assert (num["contatados"], num["responderam"]) == (3, 2)

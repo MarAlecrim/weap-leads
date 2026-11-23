@@ -1,13 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 
 import { type Card, type Coluna, FunilService } from "@/client"
 import { CardFunil } from "@/components/Funil/CardFunil"
-import { EditarCard } from "@/components/Funil/EditarCard"
+import { FichaFunil } from "@/components/Funil/FichaFunil"
 import { ORIGENS, reais, selectCls } from "@/components/Funil/util"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import useAuth from "@/hooks/useAuth"
 import useCustomToast from "@/hooks/useCustomToast"
 import { cn } from "@/lib/utils"
 
@@ -15,6 +21,8 @@ export const Route = createFileRoute("/_layout/funil")({
   component: Funil,
   head: () => ({ meta: [{ title: "Funil - Weap" }] }),
 })
+
+const MAIS = 50
 
 // Etapas que ficam recolhidas nas pontas até a pessoa abrir
 const RECOLHIDAS = ["fila", "ganho", "perdido"]
@@ -44,16 +52,26 @@ function Funil() {
     etapa?: string
   } | null>(null)
   const [sobre, setSobre] = useState<string | null>(null)
+  // quantos cards mostrar por coluna além dos 20 iniciais ("Carregar mais")
+  const [limites, setLimites] = useState<Record<string, number>>({})
   const qc = useQueryClient()
   const { showErrorToast } = useCustomToast()
+  const { user: eu } = useAuth()
+  // o vendedor só vê os leads dele: os filtros não mostram os outros
+  const vendedor =
+    !!eu && !eu.is_superuser && (eu.perfil ?? "vendedor") === "vendedor"
 
   const { data: opcoes } = useQuery({
     queryKey: ["funil-opcoes"],
     queryFn: () => FunilService.opcoes(),
     staleTime: 60_000,
   })
-  const { data, isLoading } = useQuery({
-    queryKey: ["funil", f],
+  const meusNumeros = (opcoes?.numeros ?? []).filter(
+    (n) => !vendedor || (eu?.numeros ?? []).includes(n.id),
+  )
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["funil", f, limites],
     queryFn: () =>
       FunilService.funil({
         responsavelId: f.responsavel_id || undefined,
@@ -61,7 +79,12 @@ function Funil() {
         origem: f.origem || undefined,
         parados: f.parados,
         busca: f.busca || undefined,
+        limites:
+          Object.entries(limites)
+            .map(([e, n]) => `${e}:${n}`)
+            .join(",") || undefined,
       }),
+    placeholderData: keepPreviousData,
     refetchInterval: 60_000,
   })
 
@@ -106,32 +129,36 @@ function Funil() {
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
-        <select
-          aria-label="Responsável"
-          className={cn(selectCls, "w-auto")}
-          value={f.responsavel_id}
-          onChange={(e) => setF({ ...f, responsavel_id: e.target.value })}
-        >
-          <option value="">Responsável: todos</option>
-          {opcoes?.responsaveis.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.nome}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Número"
-          className={cn(selectCls, "w-auto")}
-          value={f.instancia}
-          onChange={(e) => setF({ ...f, instancia: e.target.value })}
-        >
-          <option value="">Número: todos</option>
-          {opcoes?.numeros.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.nome}
-            </option>
-          ))}
-        </select>
+        {!vendedor && (
+          <select
+            aria-label="Responsável"
+            className={cn(selectCls, "w-auto")}
+            value={f.responsavel_id}
+            onChange={(e) => setF({ ...f, responsavel_id: e.target.value })}
+          >
+            <option value="">Responsável: todos</option>
+            {opcoes?.responsaveis.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.nome}
+              </option>
+            ))}
+          </select>
+        )}
+        {(!vendedor || meusNumeros.length > 1) && (
+          <select
+            aria-label="Número"
+            className={cn(selectCls, "w-auto")}
+            value={f.instancia}
+            onChange={(e) => setF({ ...f, instancia: e.target.value })}
+          >
+            <option value="">Número: todos</option>
+            {meusNumeros.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.nome}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label="Origem"
           className={cn(selectCls, "w-auto")}
@@ -247,17 +274,30 @@ function Funil() {
                 />
               ))}
               {c.total > c.cards.length && (
-                <p className="px-1 text-muted-foreground text-xs">
-                  Mostrando {c.cards.length} de {c.total}. Use os filtros para
-                  achar os outros.
-                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full flex-col gap-0 py-1.5 whitespace-normal"
+                  disabled={isFetching}
+                  onClick={() =>
+                    setLimites((l) => ({
+                      ...l,
+                      [c.etapa]: c.cards.length + MAIS,
+                    }))
+                  }
+                >
+                  <span>Carregar mais</span>
+                  <span className="text-muted-foreground text-xs font-normal">
+                    {c.total - c.cards.length} restantes
+                  </span>
+                </Button>
               )}
             </section>
           ))}
         </div>
       )}
 
-      <EditarCard
+      <FichaFunil
         card={editando?.card ?? null}
         etapaPedida={editando?.etapa}
         opcoes={opcoes}
