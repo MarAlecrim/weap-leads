@@ -14,7 +14,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.leads import texto
+from app.leads import notas, texto
 
 log = logging.getLogger(__name__)
 
@@ -74,6 +74,9 @@ class Filtros:
     esconder_disparo: bool = False
 
 
+CELULAR = "(receita.celular(e.telefone1) OR receita.celular(e.telefone2))"
+
+
 def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
     w: list[str] = []
     p: dict[str, Any] = {}
@@ -127,7 +130,7 @@ def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
         w.append("e.data_abertura >= current_date - make_interval(years => :amax)")
         p["amax"] = max(0, f.anos_max)
     if f.celular:
-        w.append("(receita.celular(e.telefone1) OR receita.celular(e.telefone2))")
+        w.append(CELULAR)
     if f.email:
         w.append("e.email LIKE '%@%'")
     if f.socio:
@@ -137,25 +140,35 @@ def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
     return (" AND ".join(w) or "true"), p
 
 
-def _nota_sql() -> str:
-    t = PESOS
-    partes = {
-        "regiao": "(e.municipio = ANY(coalesce(pf.municipios, '{}')) OR e.municipio IN (SELECT codigo FROM receita.municipios WHERE nome = ANY(:atende)))",
+def _partes(suf: str = "") -> dict[str, str]:
+    """Condições de cada critério da nota. O perfil da oferta vem por parâmetro
+    (:mun, :div, :por, :amin, :amax, com o sufixo da oferta) e :atende_cod são os
+    códigos das cidades onde a Weap atende."""
+    return {
+        "regiao": f"(e.municipio = ANY(CAST(:mun{suf} AS text[])) OR e.municipio = ANY(CAST(:atende_cod AS text[])))",
         "dono": "coalesce(emp.n_socios, 0) BETWEEN 1 AND 3",
-        "celular": "(receita.celular(e.telefone1) OR receita.celular(e.telefone2))",
-        "ramo": "left(e.cnae_principal, 2) = ANY(coalesce(pf.divisoes, '{}'))",
-        "porte": "emp.porte = ANY(coalesce(pf.portes, '{}'))",
+        "celular": CELULAR,
+        "ramo": f"left(e.cnae_principal, 2) = ANY(CAST(:div{suf} AS text[]))",
+        "porte": f"emp.porte = ANY(CAST(:por{suf} AS text[]))",
         "email": "coalesce(e.email, '') LIKE '%@%'",
-        "idade": "extract(year FROM age(current_date, e.data_abertura)) BETWEEN pf.anos_min AND pf.anos_max",
+        "idade": f"extract(year FROM age(current_date, e.data_abertura)) BETWEEN CAST(:amin{suf} AS int) AND CAST(:amax{suf} AS int)",
     }
-    soma = " + ".join(
-        f"(CASE WHEN {c} THEN {t[k]} ELSE 0 END)" for k, c in partes.items()
+
+
+def _nota_expr(suf: str = "") -> str:
+    return " + ".join(
+        f"(CASE WHEN {c} THEN {PESOS[k]} ELSE 0 END)" for k, c in _partes(suf).items()
     )
-    motivos = ", ".join(f"CASE WHEN {c} THEN '{k}' END" for k, c in partes.items())
-    return f"({soma}) AS nota, array_remove(ARRAY[{motivos}], NULL) AS motivos"
 
 
-SELECT = f"""
+def _motivos_expr(suf: str = "") -> str:
+    motivos = ", ".join(
+        f"CASE WHEN {c} THEN '{k}' END" for k, c in _partes(suf).items()
+    )
+    return f"array_remove(ARRAY[{motivos}], NULL)"
+
+
+COLUNAS = """
   SELECT e.cnpj, e.cnpj_basico,
          coalesce(nullif(e.nome_fantasia, ''), emp.razao_social) AS nome,
          emp.razao_social, emp.porte, emp.capital_social, coalesce(emp.n_socios, 0) AS n_socios,
@@ -166,25 +179,69 @@ SELECT = f"""
          (SELECT s.nome FROM receita.socios s
            WHERE s.cnpj_basico = e.cnpj_basico AND s.tipo = '2'
            ORDER BY (s.qualificacao IN ('49','05','16')) DESC, s.data_entrada LIMIT 1) AS decisor,
-         {_nota_sql()}
-    FROM receita.estabelecimentos e
+"""
+
+JUNTA = """
     JOIN receita.empresas emp ON emp.cnpj_basico = e.cnpj_basico
     LEFT JOIN receita.simples si ON si.cnpj_basico = e.cnpj_basico
     LEFT JOIN receita.cnaes c ON c.codigo = e.cnae_principal
     LEFT JOIN receita.cidades cid ON cid.municipio = e.municipio
-    LEFT JOIN receita.perfil_oferta pf ON pf.oferta = :oferta
 """
 
+# nota calculada na hora (sem a tabela receita.notas)
+SELECT = f"""{COLUNAS}
+         ({_nota_expr()}) AS nota, {_motivos_expr()} AS motivos
+    FROM receita.estabelecimentos e {JUNTA}"""
 
-def _params_base(f: Filtros) -> dict[str, Any]:
+
+def _select_notas(col: str) -> str:
+    """Mesmas colunas, com a nota já guardada em receita.notas (ver notas.py)."""
+    return f"""{COLUNAS}
+         n.{col} AS nota, {_motivos_expr()} AS motivos
+    FROM receita.notas n
+    JOIN receita.estabelecimentos e ON e.cnpj = n.cnpj {JUNTA}"""
+
+
+def _atende(s: Session) -> list[str]:
+    nomes = [
+        c.strip().upper() for c in settings.CIDADES_ATENDIDAS.split(",") if c.strip()
+    ]
+    return [
+        r[0]
+        for r in s.execute(
+            text("SELECT codigo FROM receita.municipios WHERE nome = ANY(:n)"),
+            {"n": nomes},
+        )
+    ]
+
+
+def _perfil(s: Session, oferta: str, suf: str = "") -> dict[str, Any]:
+    r = (
+        s.execute(
+            text(
+                "SELECT municipios, divisoes, portes, anos_min, anos_max "
+                "FROM receita.perfil_oferta WHERE oferta = :o"
+            ),
+            {"o": oferta},
+        )
+        .mappings()
+        .first()
+    )
     return {
-        "oferta": f.oferta if f.oferta in OFERTAS else "geral",
-        "atende": [
-            c.strip().upper()
-            for c in settings.CIDADES_ATENDIDAS.split(",")
-            if c.strip()
-        ],
+        f"mun{suf}": list(r["municipios"] or []) if r else [],
+        f"div{suf}": list(r["divisoes"] or []) if r else [],
+        f"por{suf}": list(r["portes"] or []) if r else [],
+        f"amin{suf}": r["anos_min"] if r else None,
+        f"amax{suf}": r["anos_max"] if r else None,
     }
+
+
+def _oferta(f: Filtros) -> str:
+    return f.oferta if f.oferta in OFERTAS else "geral"
+
+
+def _params_base(f: Filtros, s: Session) -> dict[str, Any]:
+    return _perfil(s, _oferta(f)) | {"atende_cod": _atende(s)}
 
 
 def _linha(r: dict[str, Any], no_disparo: set[str]) -> dict[str, Any]:
@@ -222,7 +279,10 @@ def _linha(r: dict[str, Any], no_disparo: set[str]) -> dict[str, Any]:
 def _engine_agente() -> Engine | None:
     if not settings.AGENTE_DB_URL:
         return None
-    return create_engine(settings.AGENTE_DB_URL, pool_pre_ping=True, pool_size=2)
+    # no máximo 4 conexões por processo (2 processos): o usuário leads_crm tem limite no banco do agente
+    return create_engine(
+        settings.AGENTE_DB_URL, pool_pre_ping=True, pool_size=2, max_overflow=2
+    )
 
 
 def chaves_no_disparo(chaves: set[str]) -> set[str]:
@@ -346,51 +406,92 @@ def _marca(linhas: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [_linha(r, no) for r in linhas]
 
 
+def _consulta(s: Session, f: Filtros, w: str, limite: str) -> tuple[str, str | None]:
+    """Monta a consulta da página e, quando a tabela de notas está em dia, a
+    contagem rápida. Devolve (consulta, coluna da nota ou None)."""
+    col = notas.coluna(s, _oferta(f))
+    if col:
+        if f.nota_min:
+            w += f" AND n.{col} >= {int(f.nota_min)}"
+        # celular vem pronto em notas.celular: deixa o índice da nota trabalhar
+        w = w.replace(CELULAR, "n.celular")
+        return (
+            f"{_select_notas(col)} WHERE {w} "
+            f"ORDER BY n.{col} DESC, n.data_abertura DESC NULLS LAST, n.cnpj {limite}",
+            col,
+        )
+    nota_min = f"WHERE nota >= {int(f.nota_min)}" if f.nota_min else ""
+    return (
+        f"SELECT * FROM ({SELECT} WHERE {w}) x {nota_min} "
+        f"ORDER BY nota DESC, data_abertura DESC NULLS LAST, cnpj {limite}",
+        None,
+    )
+
+
+def _total(s: Session, f: Filtros, w: str, p: dict[str, Any], col: str | None) -> int:
+    if col is None:
+        nota_min = f"WHERE nota >= {int(f.nota_min)}" if f.nota_min else ""
+        return int(
+            s.execute(
+                text(f"SELECT count(*) FROM ({SELECT} WHERE {w}) x {nota_min}"), p
+            ).scalar_one()
+        )
+    conds = [] if w == "true" else w.split(" AND ")
+    nmin = [f"n.{col} >= {int(f.nota_min)}"] if f.nota_min else []
+    if all(c == CELULAR for c in conds):
+        # sem filtro além do celular: conta só na tabela de notas (rápido)
+        where = " AND ".join((["n.celular"] if conds else []) + nmin) or "true"
+        return int(
+            s.execute(
+                text(f"SELECT count(*) FROM receita.notas n WHERE {where}")
+            ).scalar_one()
+        )
+    where = " AND ".join([w.replace(CELULAR, "n.celular"), *nmin])
+    return int(
+        s.execute(
+            text(
+                f"""SELECT count(*) FROM receita.notas n
+                     JOIN receita.estabelecimentos e ON e.cnpj = n.cnpj
+                     JOIN receita.empresas emp ON emp.cnpj_basico = e.cnpj_basico
+                     LEFT JOIN receita.simples si ON si.cnpj_basico = e.cnpj_basico
+                    WHERE {where}"""
+            ),
+            p,
+        ).scalar_one()
+    )
+
+
 def buscar(s: Session, f: Filtros, pagina: int = 1) -> tuple[list[dict[str, Any]], int]:
     w, p = _where(f, s)
-    p |= _params_base(f)
-    nota_min = f"WHERE nota >= {int(f.nota_min)}" if f.nota_min else ""
-    total = s.execute(
-        text(f"SELECT count(*) FROM ({SELECT} WHERE {w}) x {nota_min}"), p
-    ).scalar_one()
+    p |= _params_base(f, s)
+    sql, col = _consulta(s, f, w, "LIMIT :lim OFFSET :off")
+    total = _total(s, f, w, p, col)
     p |= {
         "lim": POR_PAGINA * (4 if f.esconder_disparo else 1),
         "off": (max(pagina, 1) - 1) * POR_PAGINA,
     }
-    rs = s.execute(
-        text(
-            f"SELECT * FROM ({SELECT} WHERE {w}) x {nota_min} "
-            "ORDER BY nota DESC, data_abertura DESC NULLS LAST, cnpj LIMIT :lim OFFSET :off"
-        ),
-        p,
-    ).mappings()
+    rs = s.execute(text(sql), p).mappings()
     linhas = _marca([dict(r) for r in rs])
     if f.esconder_disparo:
         linhas = [r for r in linhas if not r["no_disparo"]][:POR_PAGINA]
-    return linhas, int(total)
+    return linhas, total
 
 
 def para_planilha(
     s: Session, f: Filtros, cnpjs: list[str] | None = None
 ) -> list[dict[str, Any]]:
     w, p = _where(f, s)
-    p |= _params_base(f)
+    p |= _params_base(f, s)
     if cnpjs:
         w += " AND e.cnpj = ANY(:cnpjs)"
         p["cnpjs"] = [c.upper() for c in cnpjs]
-    nota_min = f"WHERE nota >= {int(f.nota_min)}" if f.nota_min else ""
-    rs = s.execute(
-        text(
-            f"SELECT * FROM ({SELECT} WHERE {w}) x {nota_min} "
-            f"ORDER BY nota DESC, data_abertura DESC NULLS LAST LIMIT {LIMITE_PLANILHA}"
-        ),
-        p,
-    ).mappings()
+    sql, _ = _consulta(s, f, w, f"LIMIT {LIMITE_PLANILHA}")
+    rs = s.execute(text(sql), p).mappings()
     return _marca([dict(r) for r in rs])
 
 
 def ficha(s: Session, cnpj: str, oferta: str = "geral") -> dict[str, Any] | None:
-    p = _params_base(Filtros(oferta=oferta)) | {"cnpj": cnpj.upper()}
+    p = _params_base(Filtros(oferta=oferta), s) | {"cnpj": cnpj.upper()}
     r = s.execute(text(f"{SELECT} WHERE e.cnpj = :cnpj"), p).mappings().first()
     if not r:
         return None

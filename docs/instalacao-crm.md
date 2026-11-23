@@ -158,3 +158,16 @@ A primeira tela passa a ser o **Painel**: fila do disparo, contatados, respostas
 ```
 cd /opt/weap-leads && docker compose up -d --build api web
 ```
+
+## Atualização: busca rápida (nota guardada)
+
+A busca não calcula mais a nota de todas as empresas a cada vez. A nota de cada oferta fica guardada na tabela `receita.notas` (cerca de 2 milhões de linhas e 0,5 GB de disco). A própria API cria e refaz essa tabela em segundo plano quando:
+- a importação mensal termina;
+- os clientes atuais mudam;
+- as cidades atendidas mudam.
+
+O cálculo leva alguns minutos. Enquanto ele roda, a busca usa a tabela anterior. Na primeira vez, quando ainda não existe tabela, a busca calcula a nota na hora, como antes. Não há migração.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api
+```
