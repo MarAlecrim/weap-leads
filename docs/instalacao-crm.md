@@ -191,5 +191,5 @@ Sem a URL, o CRM usa a `evolution_url` da tabela `sdr_config`. Sem a chave, a ca
 
 3. Atualize a API (a migração 0004 cria a tabela de "lidas") e o site:
 ```
-cd /opt/weap-leads && docker compose up -d --build api frontend
+cd /opt/weap-leads && docker compose up -d --build api web
 ```
