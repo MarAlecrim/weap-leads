@@ -329,3 +329,26 @@ def test_conversa_do_agente(monkeypatch: pytest.MonkeyPatch) -> None:
         repo._engine_agente.cache_clear()
         with eng.begin() as c:
             c.execute(text("DELETE FROM sdr_leads WHERE chave LIKE '5599%'"))
+
+
+@pytest.mark.usefixtures("limpo")
+def test_painel(
+    client: TestClient, db: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    agora = datetime.now(timezone.utc)
+    sincronia.aplicar(
+        db,
+        [
+            _linha("5599000000011", status="contatado"),
+            _linha("5599000000012", status="respondeu", ultima_resposta_em=agora),
+            _linha("5599000000013", status="sem_interesse", ultima_resposta_em=agora),
+            _linha("5599000000014", fila_status="novo"),
+        ],
+    )
+    r = client.get(f"{settings.API_V1_STR}/painel/", headers=superuser_token_headers)
+    assert r.status_code == 200
+    p = r.json()
+    assert p["contatados"] >= 3 and p["responderam"] >= 2
+    assert [e["etapa"] for e in p["etapas"]] == [e for e, _ in etapas.ETAPAS]
+    num = next(x for x in p["por_numero"] if x["instancia"] == "Teste-1111")
+    assert (num["contatados"], num["responderam"]) == (3, 2)
