@@ -15,12 +15,17 @@ Rodar `1 - Rodar no banco.sql` uma vez no weap_sdr. Ele cria a fila e o usuário
 | Marca como pulado na planilha | Marca pulado na fila | `4 - Marca pulado na fila - Query.txt` |
 | Message a model (System) | mesmo node, texto novo | `5 - Message a model - prompt System.txt` |
 | Message a model (User) | mesmo node, texto novo | `6 - Message a model - mensagem User.txt` |
+| (novo, entre Merge e Loop Over Items) | Verifica WhatsApp, Tem WhatsApp?, Atualiza telefone na fila | `7 - Checa WhatsApp - nodes.md` |
 
 O node novo devolve os mesmos campos da planilha (nome_empresa, telefone, website, especialidades…), mais `origem`, `cidade` e `fila_id`. O resto do fluxo continua igual.
 
 ## Texto da mensagem
 
 Os leads da Receita não vieram do Google Maps. O campo Origem muda o texto: com `receita`, a mensagem não fala em Google Maps, Receita, CNPJ, cadastro nem no nome do sócio.
+
+## Celular com ou sem o 9
+
+O WhatsApp registra muitos celulares sem o 9. Antes de cada envio, o workflow pergunta à Evolution o endereço exato (arquivo 7). Quem não tem WhatsApp vira `pulado` com o motivo "sem WhatsApp".
 
 ## Falhas
 
