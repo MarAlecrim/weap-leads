@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     CIDADES_ATENDIDAS: str = "LONDRINA,CAMBE,IBIPORA,ARAPONGAS,ROLANDIA,APUCARANA"
     # Banco do agente (weap_sdr), só leitura: marca quem já está no disparo. Vazio = desligado.
     AGENTE_DB_URL: str | None = None
+    # Evolution (WhatsApp), para responder pela caixa de conversas. Só no .env do servidor.
+    # Sem a URL, usa a evolution_url de sdr_config. Sem a chave, responder fica desligado.
+    EVOLUTION_URL: str | None = None
+    EVOLUTION_API_KEY: str | None = None
     # CRM interno: ninguém se cadastra sozinho; o admin cria os usuários.
     ALLOW_SIGNUP: bool = False
     SENTRY_DSN: HttpUrl | None = None
