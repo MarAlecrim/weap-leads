@@ -33,6 +33,8 @@ DO $$ BEGIN
     CREATE ROLE leads_crm NOLOGIN;
   END IF;
 END $$;
+-- o CRM usa até 8 conexões (2 processos x 4); 20 dá folga
+ALTER ROLE leads_crm CONNECTION LIMIT 20;
 GRANT CONNECT ON DATABASE weap_sdr TO leads_crm;
 GRANT USAGE ON SCHEMA public TO leads_crm;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO leads_crm;
