@@ -11,7 +11,7 @@ from sqlmodel import Session, col, delete, select
 from app import crud
 from app.core.config import settings
 from app.funil import etapas, sincronia
-from app.models import Negocio, NegocioHistorico, UserCreate, UserUpdate
+from app.models import Negocio, NegocioHistorico, NegocioNota, UserCreate, UserUpdate
 from tests.utils.user import user_authentication_headers
 from tests.utils.utils import random_email, random_lower_string
 
@@ -132,6 +132,38 @@ def test_sincronia_cria_e_so_avanca(db: Session) -> None:
     sincronia.aplicar(db, [_linha("5599000000002", status="sem_interesse")])
     b = _negocio(db, "5599000000002")
     assert (b.etapa, b.perdido_motivo) == ("perdido", "Sem interesse")
+
+
+@pytest.mark.usefixtures("limpo")
+def test_sincronia_tira_da_fila_quem_saiu(db: Session) -> None:
+    sincronia.aplicar(
+        db,
+        [
+            _linha("5599000000031", fila_status="novo"),
+            _linha("5599000000032", fila_status="novo"),
+            _linha("5599000000033", fila_status="novo"),
+            _linha("5599000000034", fila_status="pegando"),
+        ],
+    )
+    com_nota = _negocio(db, "5599000000033")
+    db.add(NegocioNota(negocio_id=com_nota.id, texto="ligar depois", autor="Teste"))
+    db.commit()
+    # 31 e 33 foram retirados da fila (não aparecem mais), 32 recebeu o disparo, 34 segue enviando.
+    sincronia.aplicar(
+        db,
+        [
+            _linha("5599000000032", status="contatado", fila_status="enviado"),
+            _linha("5599000000034", fila_status="pegando"),
+        ],
+        limpar_fila=True,
+    )
+    db.expire_all()
+    assert (
+        db.exec(select(Negocio).where(Negocio.chave == "5599000000031")).first() is None
+    )
+    assert _negocio(db, "5599000000032").etapa == "contatado"
+    assert _negocio(db, "5599000000033").etapa == "fila"
+    assert _negocio(db, "5599000000034").etapa == "fila"
 
 
 @pytest.mark.usefixtures("limpo")
