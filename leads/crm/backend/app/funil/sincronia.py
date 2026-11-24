@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 
 from app.funil import etapas
 from app.leads import repo
-from app.models import Negocio, NegocioHistorico, User
+from app.models import Negocio, NegocioHistorico, NegocioNota, User
 
 log = logging.getLogger(__name__)
 
@@ -75,8 +75,14 @@ def _dono_por_numero(session: Session) -> dict[str, Any]:
     return dono
 
 
-def aplicar(session: Session, linhas: list[dict[str, Any]]) -> int:
-    """Atualiza o funil com as linhas lidas do agente. Devolve quantos cards mudaram de etapa ou entraram."""
+def aplicar(
+    session: Session, linhas: list[dict[str, Any]], limpar_fila: bool = False
+) -> int:
+    """Atualiza o funil com as linhas lidas do agente. Devolve quantos cards mudaram de etapa ou entraram.
+
+    Com limpar_fila (linhas = retrato completo do agente), tira da coluna "Na fila" quem saiu da fila
+    sem receber o disparo (retirado, pulado, erro). Card com nota fica, para não perder o que alguém escreveu.
+    """
     agora = datetime.now(timezone.utc)
     existentes = {n.chave: n for n in session.exec(select(Negocio)).all()}
     dono = _dono_por_numero(session)
@@ -128,6 +134,20 @@ def aplicar(session: Session, linhas: list[dict[str, Any]]) -> int:
         if n.responsavel_id is None and n.instancia in dono:
             n.responsavel_id = dono[n.instancia]
         n.atualizado_em = agora
+    if limpar_fila:
+        vivos = {
+            r["chave"]
+            for r in linhas
+            if r["chave"]
+            and etapas.etapa_do_agente(
+                r["status"], bool(r["opt_out"]), r["fila_status"]
+            )
+        }
+        com_nota = set(session.exec(select(NegocioNota.negocio_id)).all())
+        for chave, n in existentes.items():
+            if n.etapa == "fila" and chave not in vivos and n.id not in com_nota:
+                session.delete(n)
+                mudou += 1
     session.commit()
     return mudou
 
@@ -149,7 +169,7 @@ def sincronizar(session: Session, forcar: bool = False) -> bool:
     if linhas is None:
         session.rollback()
         return False
-    aplicar(session, linhas)
+    aplicar(session, linhas, limpar_fila=True)
     return True
 
 
