@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import EmailStr
-from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlmodel import Field, SQLModel
 
@@ -188,3 +188,17 @@ class NegocioNota(SQLModel, table=True):
         default_factory=get_datetime_utc,
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+
+
+class ConversaLida(SQLModel, table=True):
+    """Até qual mensagem (id em sdr_mensagens) cada usuário já leu a conversa de um lead."""
+
+    __tablename__ = "crm_conversa_lida"
+
+    user_id: uuid.UUID = Field(
+        sa_column=Column(
+            ForeignKey("user.id", ondelete="CASCADE"), primary_key=True, nullable=False
+        )
+    )
+    chave: str = Field(max_length=20, primary_key=True)
+    ate_id: int = Field(sa_column=Column(BigInteger, nullable=False))

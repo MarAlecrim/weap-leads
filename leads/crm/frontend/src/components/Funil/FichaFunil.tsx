@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 import {
   type Card,
-  type CardFicha,
   type FunilOpcoes,
   FunilService,
   LeadsService,
   type NegocioAtualiza,
 } from "@/client"
+import { ConversaPainel, dataHora } from "@/components/Conversas/ConversaPainel"
 import { Ficha } from "@/components/Leads/Ficha"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,24 +37,8 @@ const erro = (e: unknown) =>
   (e as { body?: { detail?: string } })?.body?.detail ||
   "Não foi possível salvar."
 
-const AUTOR: Record<string, string> = {
-  disparo: "Disparo",
-  ia: "IA",
-  lead: "Lead",
-  humano: "Pessoa",
-}
-
 const NOME_ETAPA = (opcoes: FunilOpcoes | undefined, id: string | null) =>
   opcoes?.etapas.find((e) => e.id === id)?.nome ?? id ?? ""
-
-const dataHora = (iso: string) =>
-  new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Sao_Paulo",
-  })
 
 /** Ficha do card: o que muda à mão, os dados da Receita, a conversa do WhatsApp, notas e histórico. */
 export function FichaFunil({ card, etapaPedida, opcoes, onFechar }: Props) {
@@ -313,20 +297,15 @@ export function FichaFunil({ card, etapaPedida, opcoes, onFechar }: Props) {
 
             {/* Direita: conversa */}
             <div className="grid content-start gap-3">
-              <div className="flex items-baseline justify-between">
-                <h3 className="font-semibold">
-                  Conversa{card?.numero ? ` · número ${card.numero}` : ""}
-                </h3>
-                <span className="text-muted-foreground text-xs">
-                  só leitura por enquanto
-                </span>
-              </div>
-              <Conversa ficha={ficha} carregando={isLoading} />
-              {ficha?.resumo && (
-                <div className="rounded-lg border bg-muted/50 p-3 text-sm">
-                  <div className="mb-1 font-semibold">Resumo da IA</div>
-                  <p className="whitespace-pre-line">{ficha.resumo}</p>
-                </div>
+              <h3 className="font-semibold">
+                Conversa{card?.numero ? ` · número ${card.numero}` : ""}
+              </h3>
+              {isLoading ? (
+                <Skeleton className="h-[420px] w-full rounded-lg" />
+              ) : (
+                <ConversaPainel
+                  chave={ficha?.mensagens.length ? ficha.chave : null}
+                />
               )}
             </div>
           </div>
@@ -425,63 +404,6 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
     <div>
       <span className="text-muted-foreground">{rotulo}: </span>
       {valor}
-    </div>
-  )
-}
-
-function Conversa({
-  ficha,
-  carregando,
-}: {
-  ficha: CardFicha | undefined
-  carregando: boolean
-}) {
-  const fim = useRef<HTMLDivElement>(null)
-  // rola para a mensagem mais nova quando a conversa chega
-  const total = ficha?.mensagens.length ?? 0
-  useEffect(() => {
-    if (total) fim.current?.scrollIntoView({ block: "end" })
-  }, [total])
-
-  if (carregando) return <Skeleton className="h-[420px] w-full rounded-lg" />
-  if (!ficha?.conversa_disponivel)
-    return (
-      <p className="rounded-lg border p-4 text-muted-foreground text-sm">
-        Não consegui ler a conversa agora (banco do agente fora do ar ou não
-        ligado).
-      </p>
-    )
-  if (!ficha.mensagens.length)
-    return (
-      <p className="rounded-lg border p-4 text-muted-foreground text-sm">
-        Ainda não há mensagens com este lead.
-      </p>
-    )
-  return (
-    <div className="grid max-h-[420px] content-start gap-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
-      {ficha.mensagens.map((m) => {
-        const nosso = m.direcao === "out"
-        return (
-          <div
-            key={m.id}
-            className={cn(
-              "max-w-[80%] rounded-lg border px-3 py-2 text-sm",
-              nosso
-                ? "justify-self-end border-primary/40 bg-primary/10"
-                : "justify-self-start bg-background",
-              m.autor === "humano" && "border-primary bg-primary/20",
-            )}
-          >
-            <div className="text-muted-foreground text-xs">
-              {AUTOR[m.autor] ?? m.autor} · {dataHora(m.criado_em)}
-            </div>
-            <p className="whitespace-pre-line break-words">
-              {m.texto || "[mensagem sem texto]"}
-            </p>
-          </div>
-        )
-      })}
-      <div ref={fim} />
     </div>
   )
 }

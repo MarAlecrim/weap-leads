@@ -113,7 +113,9 @@ class FilaResultado(BaseModel):
     sem_whatsapp: int
 
 
-def _linhas_do_pedido(session: SessionDep, pedido: PlanilhaPedido) -> list[dict]:
+def _linhas_do_pedido(
+    session: SessionDep, pedido: PlanilhaPedido
+) -> list[dict[str, Any]]:
     q = {k: v for k, v in pedido.filtros.items() if v not in (None, "")}
     if "porte" in q and isinstance(q["porte"], str):
         q["porte"] = [q["porte"]]

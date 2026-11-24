@@ -405,6 +405,10 @@ export const CardFichaSchema = {
             ],
             title: 'Perdido Motivo'
         },
+        chave: {
+            type: 'string',
+            title: 'Chave'
+        },
         telefone: {
             anyOf: [
                 {
@@ -454,7 +458,7 @@ export const CardFichaSchema = {
         }
     },
     type: 'object',
-    required: ['id', 'nome', 'cnpj', 'cidade', 'origem', 'nota', 'instancia', 'numero', 'responsavel_id', 'responsavel', 'etapa', 'valor_cents', 'servico', 'dias_na_etapa', 'dias_sem_resposta', 'ia_pausada', 'proxima_acao', 'proxima_acao_em', 'perdido_motivo', 'telefone', 'resumo', 'mensagens', 'conversa_disponivel', 'historico', 'notas'],
+    required: ['id', 'nome', 'cnpj', 'cidade', 'origem', 'nota', 'instancia', 'numero', 'responsavel_id', 'responsavel', 'etapa', 'valor_cents', 'servico', 'dias_na_etapa', 'dias_sem_resposta', 'ia_pausada', 'proxima_acao', 'proxima_acao_em', 'perdido_motivo', 'chave', 'telefone', 'resumo', 'mensagens', 'conversa_disponivel', 'historico', 'notas'],
     title: 'CardFicha'
 } as const;
 
@@ -576,6 +580,192 @@ export const ColunaSchema = {
     type: 'object',
     required: ['etapa', 'nome', 'total', 'valor_cents', 'cards'],
     title: 'Coluna'
+} as const;
+
+export const ConversaSchema = {
+    properties: {
+        chave: {
+            type: 'string',
+            title: 'Chave'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        instancia: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Instancia'
+        },
+        numero: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Numero'
+        },
+        status: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Status'
+        },
+        ia_pausada: {
+            type: 'boolean',
+            title: 'Ia Pausada'
+        },
+        opt_out: {
+            type: 'boolean',
+            title: 'Opt Out'
+        },
+        resumo: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Resumo'
+        },
+        negocio_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Negocio Id'
+        },
+        mensagens: {
+            items: {
+                '$ref': '#/components/schemas/Mensagem'
+            },
+            type: 'array',
+            title: 'Mensagens'
+        },
+        pode_responder: {
+            type: 'boolean',
+            title: 'Pode Responder'
+        }
+    },
+    type: 'object',
+    required: ['chave', 'nome', 'instancia', 'numero', 'status', 'ia_pausada', 'opt_out', 'resumo', 'negocio_id', 'mensagens', 'pode_responder'],
+    title: 'Conversa'
+} as const;
+
+export const ConversaItemSchema = {
+    properties: {
+        chave: {
+            type: 'string',
+            title: 'Chave'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        instancia: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Instancia'
+        },
+        numero: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Numero'
+        },
+        status: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Status'
+        },
+        ia_pausada: {
+            type: 'boolean',
+            title: 'Ia Pausada'
+        },
+        opt_out: {
+            type: 'boolean',
+            title: 'Opt Out'
+        },
+        ultima_texto: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ultima Texto'
+        },
+        ultima_autor: {
+            type: 'string',
+            title: 'Ultima Autor'
+        },
+        ultima_em: {
+            type: 'string',
+            format: 'date-time',
+            title: 'Ultima Em'
+        },
+        ultima_id: {
+            type: 'integer',
+            title: 'Ultima Id'
+        },
+        nao_lidas: {
+            type: 'integer',
+            title: 'Nao Lidas'
+        },
+        negocio_id: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Negocio Id'
+        }
+    },
+    type: 'object',
+    required: ['chave', 'nome', 'instancia', 'numero', 'status', 'ia_pausada', 'opt_out', 'ultima_texto', 'ultima_autor', 'ultima_em', 'ultima_id', 'nao_lidas', 'negocio_id'],
+    title: 'ConversaItem'
 } as const;
 
 export const DiaSchema = {
@@ -1069,6 +1259,37 @@ export const LeadsPaginaSchema = {
     title: 'LeadsPagina'
 } as const;
 
+export const ListaConversasSchema = {
+    properties: {
+        conversas: {
+            items: {
+                '$ref': '#/components/schemas/ConversaItem'
+            },
+            type: 'array',
+            title: 'Conversas'
+        },
+        tem_mais: {
+            type: 'boolean',
+            title: 'Tem Mais'
+        },
+        nao_lidas: {
+            type: 'integer',
+            title: 'Nao Lidas'
+        },
+        ligado_ao_agente: {
+            type: 'boolean',
+            title: 'Ligado Ao Agente'
+        },
+        pode_responder: {
+            type: 'boolean',
+            title: 'Pode Responder'
+        }
+    },
+    type: 'object',
+    required: ['conversas', 'tem_mais', 'nao_lidas', 'ligado_ao_agente', 'pode_responder'],
+    title: 'ListaConversas'
+} as const;
+
 export const MensagemSchema = {
     properties: {
         id: {
@@ -1546,6 +1767,20 @@ export const PrivateUserCreateSchema = {
     type: 'object',
     required: ['email', 'password', 'full_name'],
     title: 'PrivateUserCreate'
+} as const;
+
+export const RespostaSchema = {
+    properties: {
+        texto: {
+            type: 'string',
+            maxLength: 4000,
+            minLength: 1,
+            title: 'Texto'
+        }
+    },
+    type: 'object',
+    required: ['texto'],
+    title: 'Resposta'
 } as const;
 
 export const ServicoSchema = {

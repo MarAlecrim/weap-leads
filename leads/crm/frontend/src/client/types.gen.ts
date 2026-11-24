@@ -51,6 +51,7 @@ export type CardFicha = {
     proxima_acao: (string | null);
     proxima_acao_em: (string | null);
     perdido_motivo: (string | null);
+    chave: string;
     telefone: (string | null);
     resumo: (string | null);
     mensagens: Array<Mensagem>;
@@ -85,6 +86,36 @@ export type Coluna = {
     total: number;
     valor_cents: number;
     cards: Array<Card>;
+};
+
+export type Conversa = {
+    chave: string;
+    nome: string;
+    instancia: (string | null);
+    numero: (string | null);
+    status: (string | null);
+    ia_pausada: boolean;
+    opt_out: boolean;
+    resumo: (string | null);
+    negocio_id: (number | null);
+    mensagens: Array<Mensagem>;
+    pode_responder: boolean;
+};
+
+export type ConversaItem = {
+    chave: string;
+    nome: string;
+    instancia: (string | null);
+    numero: (string | null);
+    status: (string | null);
+    ia_pausada: boolean;
+    opt_out: boolean;
+    ultima_texto: (string | null);
+    ultima_autor: string;
+    ultima_em: string;
+    ultima_id: number;
+    nao_lidas: number;
+    negocio_id: (number | null);
 };
 
 export type Dia = {
@@ -201,6 +232,14 @@ export type LeadsPagina = {
     por_pagina: number;
 };
 
+export type ListaConversas = {
+    conversas: Array<ConversaItem>;
+    tem_mais: boolean;
+    nao_lidas: number;
+    ligado_ao_agente: boolean;
+    pode_responder: boolean;
+};
+
 export type Mensagem = {
     id: number;
     direcao: string;
@@ -306,6 +345,10 @@ export type PrivateUserCreate = {
     is_verified?: boolean;
 };
 
+export type Resposta = {
+    texto: string;
+};
+
 export type Servico = {
     id: string;
     nome: string;
@@ -386,6 +429,34 @@ export type ValidationError = {
         [key: string]: unknown;
     };
 };
+
+export type ConversasListaData = {
+    antes?: (number | null);
+    busca?: string;
+    instancia?: (string | null);
+    naoLidas?: boolean;
+};
+
+export type ConversasListaResponse = (ListaConversas);
+
+export type ConversasAbrirData = {
+    chave: string;
+};
+
+export type ConversasAbrirResponse = (Conversa);
+
+export type ConversasResponderData = {
+    chave: string;
+    requestBody: Resposta;
+};
+
+export type ConversasResponderResponse = (Conversa);
+
+export type ConversasRetomarData = {
+    chave: string;
+};
+
+export type ConversasRetomarResponse = (Conversa);
 
 export type FunilOpcoesResponse = (FunilOpcoes);
 

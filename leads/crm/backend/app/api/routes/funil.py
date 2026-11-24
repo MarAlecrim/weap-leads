@@ -102,6 +102,7 @@ class NovaNota(BaseModel):
 
 
 class CardFicha(Card):
+    chave: str
     telefone: str | None
     resumo: str | None
     mensagens: list[Mensagem]
@@ -313,6 +314,7 @@ def _ficha(session: SessionDep, n: Negocio) -> CardFicha:
     ).all()
     return CardFicha(
         **_card(n, _nomes(session), agora).model_dump(),
+        chave=n.chave,
         telefone=n.telefone,
         resumo=(conv or {}).get("resumo"),
         mensagens=[Mensagem(**m) for m in (conv or {}).get("mensagens", [])],
