@@ -26,3 +26,12 @@ CRM novo em Python FastAPI (backend) + React (frontend), a partir do modelo do l
 3. Caixa única do WhatsApp: fila "Precisa de você", resumo e intenção por IA, responder pela tela.
 4. Modelo de ML.
 5. CRM completo (referência: DeskCom).
+
+## Atendimento por estado (26/11/2026)
+
+Cada número de WhatsApp pode ficar com um ou mais estados (`sdr_instancias.ufs`). Número com estados só dispara para leads desses estados; número sem estados dispara para os demais. Estado exclusivo não vaza para outro atendente, nem com o número desligado. O aviso de lead interessado vai para o celular do responsável pelo número.
+
+Primeiro caso: São Paulo com o Cesar, números 41 98526-1094 (conectado) e 41 98513-4815 (a conectar), avisos no celular dele. A busca tem filtro por estado. Importação da Receita: RS antes de SP.
+
+Instalação: `n8n/atualizacao-atendimento-por-estado/LEIA-ME.md`.
+

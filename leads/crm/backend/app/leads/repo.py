@@ -321,6 +321,18 @@ class SemBancoDoAgente(RuntimeError):
     """O CRM não está ligado ao banco do agente (AGENTE_DB_URL vazio)."""
 
 
+def _fila_tem_uf(c: Any) -> bool:
+    return bool(
+        c.execute(
+            text(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = 'sdr_fila' AND column_name = 'uf' "
+                "AND table_schema = current_schema())"
+            )
+        ).scalar()
+    )
+
+
 def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str, int]:
     """Coloca os leads na fila do disparo (sdr_fila). Quem já está no disparo ou na fila fica de fora."""
     eng = _engine_agente()
@@ -332,15 +344,20 @@ def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str,
     adicionados = 0
     if novos:
         with eng.begin() as c:
+            # o estado (uf) só é gravado depois que a coluna existir no banco do agente
+            # (n8n/atualizacao-atendimento-por-estado); antes disso a fila segue como era
+            com_uf = _fila_tem_uf(c)
+            col_uf, val_uf = (", uf", ", nullif(u, '')") if com_uf else ("", "")
             rs = c.execute(
                 text(
-                    """INSERT INTO sdr_fila (chave, telefone, nome_empresa, endereco, cidade, especialidades,
-                                            decisor, email, cnpj, nota, origem, criado_por)
-                       SELECT sdr_chave(t), t || '@s.whatsapp.net', n, en, ci, es, de, em, cn, no, 'receita', :por
+                    f"""INSERT INTO sdr_fila (chave, telefone, nome_empresa, endereco, cidade, especialidades,
+                                            decisor, email, cnpj, nota, origem, criado_por{col_uf})
+                       SELECT sdr_chave(t), t || '@s.whatsapp.net', n, en, ci, es, de, em, cn, no, 'receita', :por{val_uf}
                          FROM unnest(CAST(:t AS text[]), CAST(:n AS text[]), CAST(:en AS text[]),
                                      CAST(:ci AS text[]), CAST(:es AS text[]), CAST(:de AS text[]),
-                                     CAST(:em AS text[]), CAST(:cn AS text[]), CAST(:no AS int[]))
-                              AS x(t, n, en, ci, es, de, em, cn, no)
+                                     CAST(:em AS text[]), CAST(:cn AS text[]), CAST(:no AS int[]),
+                                     CAST(:u AS text[]))
+                              AS x(t, n, en, ci, es, de, em, cn, no, u)
                         WHERE sdr_chave(t) IS NOT NULL
                        ON CONFLICT (chave) DO NOTHING
                        RETURNING id"""
@@ -355,6 +372,7 @@ def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str,
                     "em": [r["email"] for r in novos],
                     "cn": [r["cnpj"] for r in novos],
                     "no": [r["nota"] for r in novos],
+                    "u": [r.get("uf") or "" for r in novos],
                     "por": criado_por,
                 },
             )
