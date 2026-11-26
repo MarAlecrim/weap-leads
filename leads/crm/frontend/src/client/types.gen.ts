@@ -245,8 +245,23 @@ export type Numero = {
     instancia: string;
     numero: string;
     responsavel: string;
+    aviso?: string;
+    cidade?: string;
     ativo: boolean;
     ufs: Array<(string)>;
+};
+
+/**
+ * Cadastro de um número pela tela do Admin.
+ */
+export type NumeroDados = {
+    instancia: string;
+    numero?: string;
+    responsavel: string;
+    aviso: string;
+    cidade?: string;
+    ativo?: boolean;
+    ufs?: Array<(string)>;
 };
 
 export type Opcao = {
@@ -464,6 +479,19 @@ export type LeadsClientesResponse = (Array<Cliente>);
 export type LeadsFilaResponse = ((FilaResumo | null));
 
 export type LeadsNumerosResponse = ((Array<Numero> | null));
+
+export type LeadsCriarNumeroData = {
+    requestBody: NumeroDados;
+};
+
+export type LeadsCriarNumeroResponse = (unknown);
+
+export type LeadsAlterarNumeroData = {
+    instancia: string;
+    requestBody: NumeroDados;
+};
+
+export type LeadsAlterarNumeroResponse = (unknown);
 
 export type LeadsFichaData = {
     cnpj: string;
