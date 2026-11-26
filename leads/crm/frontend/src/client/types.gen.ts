@@ -62,6 +62,7 @@ export type CardFicha = {
 export type Cidade = {
     id: string;
     nome: string;
+    uf?: (string | null);
     empresas: number;
 };
 
@@ -247,6 +248,7 @@ export type Opcao = {
 
 export type Opcoes = {
     nichos: Array<Opcao>;
+    ufs: Array<Opcao>;
     cidades: Array<Cidade>;
     portes: Array<Opcao>;
     ofertas: Array<Perfil>;
@@ -443,6 +445,7 @@ export type LeadsBuscarData = {
     porte?: (Array<(string)> | null);
     secundario?: boolean;
     socio?: boolean;
+    uf?: string;
 };
 
 export type LeadsBuscarResponse = (LeadsPagina);
