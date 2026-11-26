@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import ProgrammingError
 from sqlmodel import Session
 
 from app.core.config import settings
@@ -355,7 +356,7 @@ def numeros() -> list[dict[str, Any]] | None:
         with eng.connect() as c:
             rs = c.execute(
                 text(
-                    "SELECT instancia, numero, responsavel_nome, ativo, "
+                    "SELECT instancia, numero, responsavel_nome, responsavel_whatsapp, cidade, ativo, "
                     "coalesce(to_jsonb(i) -> 'ufs', 'null') AS ufs "
                     "FROM sdr_instancias i ORDER BY NOT ativo, instancia"
                 )
@@ -365,6 +366,8 @@ def numeros() -> list[dict[str, Any]] | None:
                     "instancia": r["instancia"],
                     "numero": r["numero"] or "",
                     "responsavel": r["responsavel_nome"] or "",
+                    "aviso": r["responsavel_whatsapp"] or "",
+                    "cidade": r["cidade"] or "",
                     "ativo": bool(r["ativo"]),
                     "ufs": list(r["ufs"] or []),
                 }
@@ -373,6 +376,62 @@ def numeros() -> list[dict[str, Any]] | None:
     except Exception:
         log.exception("Falha ao ler os números do disparo")
         return None
+
+
+class SemPermissaoNosNumeros(RuntimeError):
+    """O usuário do CRM ainda não pode mudar sdr_instancias (falta o SQL da tela de números)."""
+
+
+class NumeroJaExiste(ValueError):
+    """Já existe um número com essa instância."""
+
+
+def salvar_numero(dados: dict[str, Any], novo: bool) -> bool:
+    """Cadastra (novo=True) ou altera um número em sdr_instancias.
+    Devolve False se for alteração de um número que não existe."""
+    eng = _engine_agente()
+    if not eng:
+        raise SemBancoDoAgente()
+    p = {
+        "instancia": dados["instancia"],
+        "numero": dados["numero"] or None,
+        "resp": dados["responsavel"],
+        "aviso": dados["aviso"],
+        "cidade": dados["cidade"] or None,
+        "ufs": dados["ufs"] or None,
+        "ativo": dados["ativo"],
+    }
+    try:
+        with eng.begin() as c:
+            if novo:
+                r = c.execute(
+                    text(
+                        """INSERT INTO sdr_instancias (instancia, numero, responsavel_nome,
+                                    responsavel_whatsapp, tipo, cidade, ufs, ativo)
+                           VALUES (:instancia, :numero, :resp, :aviso, 'prospeccao', :cidade,
+                                   CAST(:ufs AS text[]), :ativo)
+                           ON CONFLICT (instancia) DO NOTHING"""
+                    ),
+                    p,
+                )
+                if not r.rowcount:
+                    raise NumeroJaExiste(dados["instancia"])
+                return True
+            r = c.execute(
+                text(
+                    """UPDATE sdr_instancias
+                          SET numero = :numero, responsavel_nome = :resp,
+                              responsavel_whatsapp = :aviso, cidade = :cidade,
+                              ufs = CAST(:ufs AS text[]), ativo = :ativo
+                        WHERE instancia = :instancia"""
+                ),
+                p,
+            )
+            return bool(r.rowcount)
+    except ProgrammingError as e:
+        if "permission denied" in str(e).lower():
+            raise SemPermissaoNosNumeros() from e
+        raise
 
 
 def mandar_para_fila(

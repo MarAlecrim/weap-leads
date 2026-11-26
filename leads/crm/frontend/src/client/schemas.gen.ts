@@ -1296,6 +1296,16 @@ export const NumeroSchema = {
             type: 'string',
             title: 'Responsavel'
         },
+        aviso: {
+            type: 'string',
+            title: 'Aviso',
+            default: ''
+        },
+        cidade: {
+            type: 'string',
+            title: 'Cidade',
+            default: ''
+        },
         ativo: {
             type: 'boolean',
             title: 'Ativo'
@@ -1311,6 +1321,50 @@ export const NumeroSchema = {
     type: 'object',
     required: ['instancia', 'numero', 'responsavel', 'ativo', 'ufs'],
     title: 'Numero'
+} as const;
+
+export const NumeroDadosSchema = {
+    properties: {
+        instancia: {
+            type: 'string',
+            title: 'Instancia'
+        },
+        numero: {
+            type: 'string',
+            title: 'Numero',
+            default: ''
+        },
+        responsavel: {
+            type: 'string',
+            title: 'Responsavel'
+        },
+        aviso: {
+            type: 'string',
+            title: 'Aviso'
+        },
+        cidade: {
+            type: 'string',
+            title: 'Cidade',
+            default: ''
+        },
+        ativo: {
+            type: 'boolean',
+            title: 'Ativo',
+            default: true
+        },
+        ufs: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Ufs',
+            default: []
+        }
+    },
+    type: 'object',
+    required: ['instancia', 'responsavel', 'aviso'],
+    title: 'NumeroDados',
+    description: 'Cadastro de um número pela tela do Admin.'
 } as const;
 
 export const OpcaoSchema = {

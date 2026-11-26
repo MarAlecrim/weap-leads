@@ -3,11 +3,11 @@ import io
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
 from app.leads import repo, texto
 
 router = APIRouter(prefix="/leads", tags=["leads"])
@@ -107,8 +107,80 @@ class Numero(BaseModel):
     instancia: str
     numero: str
     responsavel: str
+    aviso: str = ""
+    cidade: str = ""
     ativo: bool
     ufs: list[str]
+
+
+class NumeroDados(BaseModel):
+    """Cadastro de um número pela tela do Admin."""
+
+    instancia: str
+    numero: str = ""
+    responsavel: str
+    aviso: str
+    cidade: str = ""
+    ativo: bool = True
+    ufs: list[str] = []
+
+
+def _fone(v: str, campo: str) -> str:
+    d = "".join(ch for ch in v if ch.isdigit())
+    if not d:
+        return ""
+    if len(d) in (10, 11):
+        d = "55" + d
+    if not (d.startswith("55") and len(d) in (12, 13)):
+        raise HTTPException(
+            status_code=422, detail=f"{campo}: use DDD + número, ex.: 41 99134-8881"
+        )
+    return d
+
+
+def _limpa_numero(n: NumeroDados) -> dict[str, Any]:
+    ufs = list(dict.fromkeys(u.strip().upper() for u in n.ufs if u.strip()))
+    if bad := [u for u in ufs if u not in texto.UFS]:
+        raise HTTPException(
+            status_code=422, detail=f"Estado inválido: {', '.join(bad)}"
+        )
+    instancia = n.instancia.strip()
+    if not instancia:
+        raise HTTPException(status_code=422, detail="Informe o nome da instância")
+    aviso = _fone(n.aviso, "Celular de aviso")
+    if not aviso:
+        raise HTTPException(status_code=422, detail="Informe o celular de aviso")
+    if not n.responsavel.strip():
+        raise HTTPException(status_code=422, detail="Informe o responsável")
+    return {
+        "instancia": instancia,
+        "numero": _fone(n.numero, "Número"),
+        "responsavel": n.responsavel.strip(),
+        "aviso": aviso,
+        "cidade": n.cidade.strip(),
+        "ativo": n.ativo,
+        "ufs": ufs,
+    }
+
+
+def _salva(dados: dict[str, Any], novo: bool) -> None:
+    try:
+        ok = repo.salvar_numero(dados, novo)
+    except repo.SemBancoDoAgente:
+        raise HTTPException(
+            status_code=503, detail="O CRM ainda não está ligado ao banco do disparo."
+        )
+    except repo.SemPermissaoNosNumeros:
+        raise HTTPException(
+            status_code=409,
+            detail="O banco do disparo ainda não deixa o CRM mudar os números (falta o SQL da tela de números).",
+        )
+    except repo.NumeroJaExiste:
+        raise HTTPException(
+            status_code=409, detail="Já existe um número com essa instância."
+        )
+    if not ok:
+        raise HTTPException(status_code=404, detail="Número não encontrado")
 
 
 class FilaResumo(BaseModel):
@@ -263,6 +335,26 @@ def numeros(_u: CurrentUser) -> Any:
     """Números de WhatsApp do disparo, com os estados de cada um (vazio se o banco do agente não estiver ligado)."""
     r = repo.numeros()
     return [Numero(**n) for n in r] if r is not None else None
+
+
+@router.post(
+    "/numeros",
+    status_code=201,
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def criar_numero(dados: NumeroDados) -> None:
+    """Cadastra um número de WhatsApp do disparo (só administrador)."""
+    _salva(_limpa_numero(dados), novo=True)
+
+
+@router.put(
+    "/numeros/{instancia}",
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def alterar_numero(instancia: str, dados: NumeroDados) -> None:
+    """Muda estados, responsável, celular de aviso e ligado/desligado de um número (só administrador)."""
+    d = _limpa_numero(dados.model_copy(update={"instancia": instancia}))
+    _salva(d, novo=False)
 
 
 @router.get("/{cnpj}", response_model=LeadFicha)

@@ -39,3 +39,7 @@ Instalação: `n8n/atualizacao-atendimento-por-estado/LEIA-ME.md`.
 
 No "Mandar para o disparo" dá para escolher quais números disparam aquela leva (`sdr_fila.instancias`). Sem escolha, vale a regra de estados. A escolha manda: o número marcado pega o lead mesmo fora dos seus estados. Depois vem a tela de números no Admin (estados, responsável, aviso, ligar/desligar). Instalação: `n8n/atualizacao-numeros-por-lista/LEIA-ME.md`.
 
+### Tela de números (26/11/2026)
+
+Admin → Números de WhatsApp: estados, responsável, celular de aviso e ligado/desligado de cada número, sem mexer no banco. Só administrador. Instalação: `n8n/atualizacao-tela-de-numeros/LEIA-ME.md`.
+
