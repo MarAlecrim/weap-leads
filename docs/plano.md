@@ -35,3 +35,7 @@ Primeiro caso: São Paulo com o Cesar, números 41 98526-1094 (conectado) e 41 9
 
 Instalação: `n8n/atualizacao-atendimento-por-estado/LEIA-ME.md`.
 
+### Números escolhidos por lista (26/11/2026)
+
+No "Mandar para o disparo" dá para escolher quais números disparam aquela leva (`sdr_fila.instancias`). Sem escolha, vale a regra de estados. A escolha manda: o número marcado pega o lead mesmo fora dos seus estados. Depois vem a tela de números no Admin (estados, responsável, aviso, ligar/desligar). Instalação: `n8n/atualizacao-numeros-por-lista/LEIA-ME.md`.
+

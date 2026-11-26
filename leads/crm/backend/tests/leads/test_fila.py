@@ -133,3 +133,53 @@ def test_rota_fila_sem_banco(
         json={"filtros": {"celular": False}, "cnpjs": ["00000000000000"]},
     )
     assert r.status_code == 503
+
+
+def test_numeros_do_disparo(agente) -> None:
+    ns = repo.numeros()
+    assert ns is not None
+    with agente.connect() as c:
+        total = c.execute(text("SELECT count(*) FROM sdr_instancias")).scalar()
+    assert len(ns) == total
+    assert all(isinstance(n["ufs"], list) for n in ns)
+
+
+def test_fila_grava_os_numeros_escolhidos(agente) -> None:
+    with agente.connect() as c:
+        if not repo._fila_tem(c, "instancias"):
+            pytest.skip("sdr_fila sem a coluna instancias")
+        inst = c.execute(text("SELECT instancia FROM sdr_instancias LIMIT 1")).scalar()
+    if not inst:
+        pytest.skip("sdr_instancias vazia")
+    try:
+        r = repo.mandar_para_fila(
+            [_linha("11999990005"), _linha("11999990006")], "teste", [inst, inst]
+        )
+        assert r["adicionados"] == 2
+        r = repo.mandar_para_fila([_linha("11999990007")], "teste")
+        assert r["adicionados"] == 1
+        with agente.connect() as c:
+            got = dict(
+                c.execute(
+                    text(
+                        "SELECT chave, instancias FROM sdr_fila WHERE criado_por = 'teste'"
+                    )
+                ).all()
+            )
+        assert got == {
+            "551199990005": [inst],
+            "551199990006": [inst],
+            "551199990007": None,
+        }
+        with pytest.raises(repo.NumeroDesconhecido):
+            repo.mandar_para_fila([_linha("11999990008")], "teste", ["nao-existe"])
+    finally:
+        with agente.begin() as c:
+            c.execute(text("DELETE FROM sdr_fila WHERE criado_por = 'teste'"))
+
+
+@pytest.mark.usefixtures("agente")
+def test_escolha_sem_coluna_no_banco(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(repo, "_fila_tem", lambda _c, _col: False)
+    with pytest.raises(repo.SemEscolhaDeNumeros):
+        repo.mandar_para_fila([_linha("11999990009")], "teste", ["qualquer"])

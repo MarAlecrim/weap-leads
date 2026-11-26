@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsNumerosResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class FunilService {
     /**
@@ -208,6 +208,19 @@ export class LeadsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/leads/fila'
+        });
+    }
+    
+    /**
+     * Numeros
+     * Números de WhatsApp do disparo, com os estados de cada um (vazio se o banco do agente não estiver ligado).
+     * @returns unknown Successful Response
+     * @throws ApiError
+     */
+    public static numeros(): CancelablePromise<LeadsNumerosResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/leads/numeros'
         });
     }
     

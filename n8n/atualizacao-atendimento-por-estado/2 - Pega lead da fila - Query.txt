@@ -1,3 +1,4 @@
+-- SUBSTITUÍDA: use n8n/atualizacao-numeros-por-lista/2 - Pega lead da fila - Query.txt (estados + números escolhidos no CRM).
 -- Node Postgres "Pega lead da fila" (troca a query do mesmo node). Operation: Execute Query.
 -- Agora cada número só pega leads dos estados que atende (sdr_instancias.ufs).
 -- Pega 1 lead por execução. FOR UPDATE SKIP LOCKED garante que dois números nunca pegam o mesmo lead.

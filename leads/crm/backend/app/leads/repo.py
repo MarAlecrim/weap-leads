@@ -321,23 +321,88 @@ class SemBancoDoAgente(RuntimeError):
     """O CRM não está ligado ao banco do agente (AGENTE_DB_URL vazio)."""
 
 
-def _fila_tem_uf(c: Any) -> bool:
+def _fila_tem(c: Any, coluna: str) -> bool:
     return bool(
         c.execute(
             text(
                 "SELECT EXISTS (SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = 'sdr_fila' AND column_name = 'uf' "
+                "WHERE table_name = 'sdr_fila' AND column_name = :col "
                 "AND table_schema = current_schema())"
-            )
+            ),
+            {"col": coluna},
         ).scalar()
     )
 
 
-def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str, int]:
-    """Coloca os leads na fila do disparo (sdr_fila). Quem já está no disparo ou na fila fica de fora."""
+def _fila_tem_uf(c: Any) -> bool:
+    return _fila_tem(c, "uf")
+
+
+class SemEscolhaDeNumeros(RuntimeError):
+    """O banco do agente ainda não guarda os números escolhidos (sdr_fila.instancias)."""
+
+
+class NumeroDesconhecido(ValueError):
+    """Número (instância) que não está em sdr_instancias."""
+
+
+def numeros() -> list[dict[str, Any]] | None:
+    """Números de WhatsApp do disparo (sdr_instancias). None se o banco do agente não estiver ligado."""
+    eng = _engine_agente()
+    if not eng:
+        return None
+    try:
+        with eng.connect() as c:
+            rs = c.execute(
+                text(
+                    "SELECT instancia, numero, responsavel_nome, ativo, "
+                    "coalesce(to_jsonb(i) -> 'ufs', 'null') AS ufs "
+                    "FROM sdr_instancias i ORDER BY NOT ativo, instancia"
+                )
+            ).mappings()
+            return [
+                {
+                    "instancia": r["instancia"],
+                    "numero": r["numero"] or "",
+                    "responsavel": r["responsavel_nome"] or "",
+                    "ativo": bool(r["ativo"]),
+                    "ufs": list(r["ufs"] or []),
+                }
+                for r in rs
+            ]
+    except Exception:
+        log.exception("Falha ao ler os números do disparo")
+        return None
+
+
+def mandar_para_fila(
+    linhas: list[dict[str, Any]],
+    criado_por: str,
+    instancias: list[str] | None = None,
+) -> dict[str, int]:
+    """Coloca os leads na fila do disparo (sdr_fila). Quem já está no disparo ou na fila fica de fora.
+
+    `instancias`: números escolhidos para esta lista (só eles disparam); vazio = automático por estado.
+    """
     eng = _engine_agente()
     if not eng:
         raise SemBancoDoAgente()
+    instancias = list(dict.fromkeys(i for i in (instancias or []) if i))
+    if instancias:
+        with eng.connect() as c:
+            if not _fila_tem(c, "instancias"):
+                raise SemEscolhaDeNumeros()
+            conhecidas = {
+                r[0]
+                for r in c.execute(
+                    text(
+                        "SELECT instancia FROM sdr_instancias WHERE instancia = ANY(:i)"
+                    ),
+                    {"i": instancias},
+                )
+            }
+        if faltam := [i for i in instancias if i not in conhecidas]:
+            raise NumeroDesconhecido(", ".join(faltam))
     sem_zap = sum(1 for r in linhas if not r["whatsapp"])
     ja = sum(1 for r in linhas if r["whatsapp"] and r["no_disparo"])
     novos = [r for r in linhas if r["whatsapp"] and not r["no_disparo"]]
@@ -348,6 +413,9 @@ def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str,
             # (n8n/atualizacao-atendimento-por-estado); antes disso a fila segue como era
             com_uf = _fila_tem_uf(c)
             col_uf, val_uf = (", uf", ", nullif(u, '')") if com_uf else ("", "")
+            if instancias:
+                col_uf += ", instancias"
+                val_uf += ", CAST(:inst AS text[])"
             rs = c.execute(
                 text(
                     f"""INSERT INTO sdr_fila (chave, telefone, nome_empresa, endereco, cidade, especialidades,
@@ -373,6 +441,7 @@ def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str,
                     "cn": [r["cnpj"] for r in novos],
                     "no": [r["nota"] for r in novos],
                     "u": [r.get("uf") or "" for r in novos],
+                    "inst": instancias,
                     "por": criado_por,
                 },
             )

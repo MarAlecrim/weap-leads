@@ -1282,6 +1282,37 @@ export const NovaNotaSchema = {
     title: 'NovaNota'
 } as const;
 
+export const NumeroSchema = {
+    properties: {
+        instancia: {
+            type: 'string',
+            title: 'Instancia'
+        },
+        numero: {
+            type: 'string',
+            title: 'Numero'
+        },
+        responsavel: {
+            type: 'string',
+            title: 'Responsavel'
+        },
+        ativo: {
+            type: 'boolean',
+            title: 'Ativo'
+        },
+        ufs: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Ufs'
+        }
+    },
+    type: 'object',
+    required: ['instancia', 'numero', 'responsavel', 'ativo', 'ufs'],
+    title: 'Numero'
+} as const;
+
 export const OpcaoSchema = {
     properties: {
         id: {
@@ -1507,6 +1538,14 @@ export const PlanilhaPedidoSchema = {
             type: 'boolean',
             title: 'Pular Disparo',
             default: true
+        },
+        instancias: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Instancias',
+            default: []
         }
     },
     type: 'object',

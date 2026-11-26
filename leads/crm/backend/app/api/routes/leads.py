@@ -99,6 +99,16 @@ class PlanilhaPedido(BaseModel):
     filtros: dict[str, Any] = {}
     cnpjs: list[str] = []
     pular_disparo: bool = True
+    # só no "Mandar para o disparo": números que vão disparar esta lista (vazio = por estado)
+    instancias: list[str] = []
+
+
+class Numero(BaseModel):
+    instancia: str
+    numero: str
+    responsavel: str
+    ativo: bool
+    ufs: list[str]
 
 
 class FilaResumo(BaseModel):
@@ -248,6 +258,13 @@ def fila(_u: CurrentUser) -> Any:
     return FilaResumo(**r) if r else None
 
 
+@router.get("/numeros", response_model=list[Numero] | None)
+def numeros(_u: CurrentUser) -> Any:
+    """Números de WhatsApp do disparo, com os estados de cada um (vazio se o banco do agente não estiver ligado)."""
+    r = repo.numeros()
+    return [Numero(**n) for n in r] if r is not None else None
+
+
 @router.get("/{cnpj}", response_model=LeadFicha)
 def ficha(
     session: SessionDep, _u: CurrentUser, cnpj: str, oferta: str = "geral"
@@ -266,11 +283,20 @@ def mandar_para_disparo(
     """Coloca os leads (marcados ou do filtro, até 3.000) na fila do disparo do n8n."""
     linhas = _linhas_do_pedido(session, pedido)
     try:
-        return FilaResultado(**repo.mandar_para_fila(linhas, u.email))
+        return FilaResultado(
+            **repo.mandar_para_fila(linhas, u.email, pedido.instancias)
+        )
     except repo.SemBancoDoAgente:
         raise HTTPException(
             status_code=503, detail="O CRM ainda não está ligado ao banco do disparo."
         )
+    except repo.SemEscolhaDeNumeros:
+        raise HTTPException(
+            status_code=409,
+            detail="O banco do disparo ainda não aceita escolher os números. Mande no automático.",
+        )
+    except repo.NumeroDesconhecido as e:
+        raise HTTPException(status_code=422, detail=f"Número desconhecido: {e}")
 
 
 @router.post("/planilha")

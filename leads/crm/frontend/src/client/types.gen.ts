@@ -241,6 +241,14 @@ export type NovaNota = {
     texto: string;
 };
 
+export type Numero = {
+    instancia: string;
+    numero: string;
+    responsavel: string;
+    ativo: boolean;
+    ufs: Array<(string)>;
+};
+
 export type Opcao = {
     id: string;
     nome: string;
@@ -291,6 +299,7 @@ export type PlanilhaPedido = {
     };
     cnpjs?: Array<(string)>;
     pular_disparo?: boolean;
+    instancias?: Array<(string)>;
 };
 
 export type PorNumero = {
@@ -453,6 +462,8 @@ export type LeadsBuscarResponse = (LeadsPagina);
 export type LeadsClientesResponse = (Array<Cliente>);
 
 export type LeadsFilaResponse = ((FilaResumo | null));
+
+export type LeadsNumerosResponse = ((Array<Numero> | null));
 
 export type LeadsFichaData = {
     cnpj: string;
