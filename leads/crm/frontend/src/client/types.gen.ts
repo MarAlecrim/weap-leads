@@ -88,6 +88,14 @@ export type Coluna = {
     cards: Array<Card>;
 };
 
+export type Conexoes = {
+    configurado: boolean;
+    estados: {
+        [key: string]: (string);
+    };
+    falhas: Array<(string)>;
+};
+
 export type Dia = {
     dia: string;
     enviados: number;
@@ -485,6 +493,8 @@ export type LeadsCriarNumeroData = {
 };
 
 export type LeadsCriarNumeroResponse = (unknown);
+
+export type LeadsConexaoDosNumerosResponse = (Conexoes);
 
 export type LeadsAlterarNumeroData = {
     instancia: string;

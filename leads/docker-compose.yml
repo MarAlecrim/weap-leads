@@ -33,6 +33,7 @@ services:
       POSTGRES_USER: leads
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       AGENTE_DB_URL: ${AGENTE_DB_URL:-}
+      EVOLUTION_APIS: ${EVOLUTION_APIS:-}
 
   web:
     build:
