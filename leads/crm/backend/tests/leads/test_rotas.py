@@ -129,3 +129,21 @@ def test_notas_refeitas_quando_clientes_mudam(db: Session) -> None:
     finally:
         db.rollback()
     assert notas._em_dia(db)
+
+
+def test_busca_por_estado(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    r = client.get(
+        f"{settings.API_V1_STR}/leads/",
+        params={"uf": "pr"},
+        headers=superuser_token_headers,
+    )
+    assert r.status_code == 200
+    assert all(x["uf"] == "PR" for x in r.json()["data"])
+    r = client.get(
+        f"{settings.API_V1_STR}/leads/",
+        params={"uf": "ZZ"},
+        headers=superuser_token_headers,
+    )
+    assert r.status_code == 200 and r.json()["count"] == 0

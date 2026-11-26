@@ -137,6 +137,7 @@ export class LeadsService {
      * @param data.oferta
      * @param data.nicho
      * @param data.secundario
+     * @param data.uf
      * @param data.cidade
      * @param data.bairro
      * @param data.nome
@@ -162,6 +163,7 @@ export class LeadsService {
                 oferta: data.oferta,
                 nicho: data.nicho,
                 secundario: data.secundario,
+                uf: data.uf,
                 cidade: data.cidade,
                 bairro: data.bairro,
                 nome: data.nome,

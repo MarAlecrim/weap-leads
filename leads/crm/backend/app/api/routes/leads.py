@@ -63,6 +63,7 @@ class Opcao(BaseModel):
 
 
 class Cidade(Opcao):
+    uf: str | None = None
     empresas: int
 
 
@@ -113,7 +114,9 @@ class FilaResultado(BaseModel):
     sem_whatsapp: int
 
 
-def _linhas_do_pedido(session: SessionDep, pedido: PlanilhaPedido) -> list[dict[str, Any]]:
+def _linhas_do_pedido(
+    session: SessionDep, pedido: PlanilhaPedido
+) -> list[dict[str, Any]]:
     q = {k: v for k, v in pedido.filtros.items() if v not in (None, "")}
     if "porte" in q and isinstance(q["porte"], str):
         q["porte"] = [q["porte"]]
@@ -129,6 +132,7 @@ def _filtros(
     oferta: str = "geral",
     nicho: str = "",
     secundario: bool = False,
+    uf: str = "",
     cidade: str = "",
     bairro: str = "",
     nome: str = "",
@@ -147,6 +151,7 @@ def _filtros(
         oferta=oferta,
         nicho=nicho.strip(),
         secundario=secundario,
+        uf=uf.strip().upper(),
         cidade=cidade.strip(),
         bairro=bairro.strip(),
         nome=nome.strip(),
@@ -183,6 +188,7 @@ def buscar(
     oferta: str = "geral",
     nicho: str = "",
     secundario: bool = False,
+    uf: str = "",
     cidade: str = "",
     bairro: str = "",
     nome: str = "",
@@ -203,6 +209,7 @@ def buscar(
         oferta,
         nicho,
         secundario,
+        uf,
         cidade,
         bairro,
         nome,

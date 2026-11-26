@@ -468,6 +468,17 @@ export const CidadeSchema = {
             type: 'string',
             title: 'Nome'
         },
+        uf: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Uf'
+        },
         empresas: {
             type: 'integer',
             title: 'Empresas'

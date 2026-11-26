@@ -62,6 +62,7 @@ export type CardFicha = {
 export type Cidade = {
     id: string;
     nome: string;
+    uf?: (string | null);
     empresas: number;
 };
 
@@ -443,6 +444,7 @@ export type LeadsBuscarData = {
     porte?: (Array<(string)> | null);
     secundario?: boolean;
     socio?: boolean;
+    uf?: string;
 };
 
 export type LeadsBuscarResponse = (LeadsPagina);

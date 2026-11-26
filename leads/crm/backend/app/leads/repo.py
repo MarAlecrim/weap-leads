@@ -59,6 +59,7 @@ class Filtros:
     oferta: str = "geral"
     nicho: str = ""
     secundario: bool = False
+    uf: str = ""
     cidade: str = ""
     bairro: str = ""
     nome: str = ""
@@ -94,6 +95,9 @@ def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
             if f.secundario
             else "e.cnae_principal = ANY(:cnaes)"
         )
+    if f.uf:
+        w.append("e.uf = :uf")
+        p["uf"] = f.uf
     if f.cidade:
         w.append("e.municipio = :cidade")
         p["cidade"] = f.cidade
@@ -330,13 +334,13 @@ def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str,
         with eng.begin() as c:
             rs = c.execute(
                 text(
-                    """INSERT INTO sdr_fila (chave, telefone, nome_empresa, endereco, cidade, especialidades,
+                    """INSERT INTO sdr_fila (chave, telefone, nome_empresa, endereco, cidade, uf, especialidades,
                                             decisor, email, cnpj, nota, origem, criado_por)
-                       SELECT sdr_chave(t), t || '@s.whatsapp.net', n, en, ci, es, de, em, cn, no, 'receita', :por
+                       SELECT sdr_chave(t), t || '@s.whatsapp.net', n, en, ci, nullif(u, ''), es, de, em, cn, no, 'receita', :por
                          FROM unnest(CAST(:t AS text[]), CAST(:n AS text[]), CAST(:en AS text[]),
-                                     CAST(:ci AS text[]), CAST(:es AS text[]), CAST(:de AS text[]),
+                                     CAST(:ci AS text[]), CAST(:u AS text[]), CAST(:es AS text[]), CAST(:de AS text[]),
                                      CAST(:em AS text[]), CAST(:cn AS text[]), CAST(:no AS int[]))
-                              AS x(t, n, en, ci, es, de, em, cn, no)
+                              AS x(t, n, en, ci, u, es, de, em, cn, no)
                         WHERE sdr_chave(t) IS NOT NULL
                        ON CONFLICT (chave) DO NOTHING
                        RETURNING id"""
@@ -346,6 +350,7 @@ def mandar_para_fila(linhas: list[dict[str, Any]], criado_por: str) -> dict[str,
                     "n": [r["nome"] for r in novos],
                     "en": [r["endereco"] for r in novos],
                     "ci": [r["cidade"] for r in novos],
+                    "u": [r.get("uf") or "" for r in novos],
                     "es": [r["atividade"] for r in novos],
                     "de": [r["decisor"] for r in novos],
                     "em": [r["email"] for r in novos],
@@ -539,6 +544,7 @@ def cidades(s: Session) -> list[dict[str, Any]]:
         {
             "id": r["municipio"],
             "nome": f"{texto.nome_bonito(r['nome'])} - {r['uf']}",
+            "uf": r["uf"],
             "empresas": r["empresas"],
         }
         for r in rs
