@@ -4,6 +4,7 @@ export type FiltrosBusca = {
   oferta: string
   nicho: string
   secundario: boolean
+  uf: string
   cidade: string
   bairro: string
   nome: string
@@ -23,6 +24,7 @@ export const filtrosPadrao: FiltrosBusca = {
   oferta: "geral",
   nicho: "",
   secundario: false,
+  uf: "",
   cidade: "",
   bairro: "",
   nome: "",
@@ -52,6 +54,7 @@ export function paraApi(f: FiltrosBusca) {
     oferta: f.oferta,
     nicho: f.nicho || undefined,
     secundario: f.secundario || undefined,
+    uf: f.uf || undefined,
     cidade: f.cidade || undefined,
     bairro: f.bairro || undefined,
     nome: f.nome || undefined,

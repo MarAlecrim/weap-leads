@@ -26,3 +26,7 @@ CRM novo em Python FastAPI (backend) + React (frontend), a partir do modelo do l
 3. Caixa única do WhatsApp: fila "Precisa de você", resumo e intenção por IA, responder pela tela.
 4. Modelo de ML.
 5. CRM completo (referência: DeskCom).
+
+## Números por estado (26/11/2026)
+
+Pedido do Márcio: cada estado pode ter os próprios números e o próprio especialista (ex.: SP com o Cesar). A busca do CRM ganha filtro por estado. A fila guarda o estado do lead, e cada número só pega leads dos estados dele (`sdr_instancias.ufs`). Número sem estados pega os estados que ninguém reservou. Detalhes em `n8n/atualizacao-numeros-por-estado/LEIA-ME.md`.

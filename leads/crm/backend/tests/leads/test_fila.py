@@ -34,6 +34,7 @@ def _linha(zap: str, no_disparo: bool = False) -> dict:
         "nome": "Empresa Teste",
         "endereco": "Rua A, 1",
         "cidade": "Londrina",
+        "uf": "PR",
         "atividade": "Construção de edifícios",
         "decisor": "Fulano",
         "email": "",
@@ -74,9 +75,9 @@ def test_mandar_para_fila_sem_repetir(agente) -> None:
         assert resumo is not None and resumo["aguardando"] >= 2
         with agente.connect() as c:
             t = c.execute(
-                text("SELECT telefone FROM sdr_fila WHERE chave = '554399990001'")
-            ).scalar()
-        assert t == "5543999990001@s.whatsapp.net"
+                text("SELECT telefone, uf FROM sdr_fila WHERE chave = '554399990001'")
+            ).one()
+        assert tuple(t) == ("5543999990001@s.whatsapp.net", "PR")
     finally:
         with agente.begin() as c:
             c.execute(text("DELETE FROM sdr_fila WHERE criado_por = 'teste'"))

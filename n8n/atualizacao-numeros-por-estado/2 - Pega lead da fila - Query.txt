@@ -1,0 +1,21 @@
+-- Node Postgres "Pega lead da fila". Operation: Execute Query.
+-- Query Parameters (Options, modo Expression):  {{ [ String($('Dados_Evolution').first().json.instancia || '') ] }}
+-- Cada número só pega leads dos estados dele (sdr_instancias.ufs).
+-- Número sem estados (ufs NULL) pega os estados que nenhum número reservou, e os leads sem estado.
+WITH eu AS (SELECT ufs FROM sdr_instancias WHERE instancia = $1),
+reservados AS (SELECT DISTINCT unnest(ufs) AS uf FROM sdr_instancias WHERE ufs IS NOT NULL)
+UPDATE sdr_fila f
+   SET status = 'pegando', pego_em = now(), tentativas = f.tentativas + 1
+ WHERE f.id = (
+   SELECT q.id FROM sdr_fila q
+    WHERE (q.status = 'novo'
+       OR (q.status = 'pegando' AND q.pego_em < now() - interval '30 minutes' AND q.tentativas < 2))
+      AND CASE WHEN (SELECT ufs FROM eu) IS NOT NULL
+               THEN q.uf = ANY(CAST((SELECT ufs FROM eu) AS text[]))
+               ELSE q.uf IS NULL OR q.uf NOT IN (SELECT uf FROM reservados) END
+    ORDER BY q.nota DESC, q.id
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1)
+RETURNING f.id AS fila_id, f.nome_empresa, f.telefone, f.endereco, f.cidade,
+          coalesce(f.website, '') AS website, '' AS rating, '' AS reviews,
+          f.especialidades, '' AS mensagem, '' AS disparo, f.origem;
