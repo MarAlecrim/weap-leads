@@ -1,0 +1,21 @@
+-- Node Postgres "Pega lead da fila" (troca a query do mesmo node). Operation: Execute Query.
+-- Agora cada número só pega leads dos estados que atende (sdr_instancias.ufs).
+-- Pega 1 lead por execução. FOR UPDATE SKIP LOCKED garante que dois números nunca pegam o mesmo lead.
+-- Se um disparo travar no meio, o lead volta para a fila depois de 30 minutos (no máximo 2 tentativas).
+UPDATE sdr_fila f
+   SET status = 'pegando', pego_em = now(), tentativas = f.tentativas + 1
+ WHERE f.id = (
+   SELECT id FROM sdr_fila
+    WHERE (status = 'novo'
+           OR (status = 'pegando' AND pego_em < now() - interval '30 minutes' AND tentativas < 2))
+      AND sdr_atende_uf($1, uf)
+    ORDER BY nota DESC, id
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1)
+RETURNING f.id AS fila_id, f.nome_empresa, f.telefone, f.endereco, f.cidade,
+          coalesce(f.website, '') AS website, '' AS rating, '' AS reviews,
+          f.especialidades, '' AS mensagem, '' AS disparo, f.origem;
+
+-- Query Parameters (em Options → Query Parameters). O Dados_Evolution só roda depois deste node,
+-- então o nome da instância vai escrito aqui, igual ao do Dados_Evolution deste workflow:
+-- {{ [ 'NOME_DA_INSTANCIA_DESTE_WORKFLOW' ] }}

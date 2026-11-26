@@ -27,8 +27,9 @@ def agente(monkeypatch: pytest.MonkeyPatch):
     repo._engine_agente.cache_clear()
 
 
-def _linha(zap: str, no_disparo: bool = False) -> dict:
+def _linha(zap: str, no_disparo: bool = False, uf: str = "PR") -> dict:
     return {
+        "uf": uf,
         "whatsapp": zap,
         "no_disparo": no_disparo,
         "nome": "Empresa Teste",
@@ -77,6 +78,41 @@ def test_mandar_para_fila_sem_repetir(agente) -> None:
                 text("SELECT telefone FROM sdr_fila WHERE chave = '554399990001'")
             ).scalar()
         assert t == "5543999990001@s.whatsapp.net"
+    finally:
+        with agente.begin() as c:
+            c.execute(text("DELETE FROM sdr_fila WHERE criado_por = 'teste'"))
+
+
+def test_fila_grava_o_estado(agente) -> None:
+    with agente.connect() as c:
+        tem_uf = repo._fila_tem_uf(c)
+    try:
+        r = repo.mandar_para_fila(
+            [_linha("11999990001", uf="SP"), _linha("43999990004", uf="")], "teste"
+        )
+        assert r["adicionados"] == 2
+        if not tem_uf:
+            pytest.skip("sdr_fila sem a coluna uf (banco antes da atualização)")
+        with agente.connect() as c:
+            ufs = dict(
+                c.execute(
+                    text("SELECT chave, uf FROM sdr_fila WHERE criado_por = 'teste'")
+                ).all()
+            )
+        assert ufs == {"551199990001": "SP", "554399990004": None}
+    finally:
+        with agente.begin() as c:
+            c.execute(text("DELETE FROM sdr_fila WHERE criado_por = 'teste'"))
+
+
+def test_fila_sem_coluna_uf_continua_funcionando(
+    agente, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CRM novo com banco do agente antigo (antes do SQL do atendimento por estado)."""
+    monkeypatch.setattr(repo, "_fila_tem_uf", lambda _c: False)
+    try:
+        r = repo.mandar_para_fila([_linha("11999990002", uf="SP")], "teste")
+        assert r["adicionados"] == 1
     finally:
         with agente.begin() as c:
             c.execute(text("DELETE FROM sdr_fila WHERE criado_por = 'teste'"))
