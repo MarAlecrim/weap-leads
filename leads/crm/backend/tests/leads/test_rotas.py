@@ -105,6 +105,7 @@ def test_filtro_de_capital(
         repo.Filtros(oferta="site", celular=False),
         repo.Filtros(celular=False, porte=["me", "mei"]),
         repo.Filtros(oferta="inexistente", email=True, celular=False),
+        repo.Filtros(celular=False, uf="PR"),
     ],
 )
 def test_nota_guardada_igual_a_calculada(
@@ -129,3 +130,33 @@ def test_notas_refeitas_quando_clientes_mudam(db: Session) -> None:
     finally:
         db.rollback()
     assert notas._em_dia(db)
+
+
+def test_filtro_de_estado(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    h = superuser_token_headers
+    ufs = client.get(f"{settings.API_V1_STR}/leads/opcoes", headers=h).json()["ufs"]
+    todos = _busca(client, h)["count"]
+    soma = 0
+    for u in ufs:
+        j = _busca(client, h, uf=u["id"])
+        soma += j["count"]
+        assert all(x["uf"] == u["id"] for x in j["data"])
+    assert soma == todos
+    # minúsculo também vale
+    if ufs:
+        assert (
+            _busca(client, h, uf=ufs[0]["id"].lower())["count"]
+            == _busca(client, h, uf=ufs[0]["id"])["count"]
+        )
+
+
+def test_cidades_trazem_o_estado(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    j = client.get(
+        f"{settings.API_V1_STR}/leads/opcoes", headers=superuser_token_headers
+    ).json()
+    ids = {u["id"] for u in j["ufs"]}
+    assert all(c["uf"] in ids for c in j["cidades"])

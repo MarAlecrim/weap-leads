@@ -150,6 +150,7 @@ export class LeadsService {
      * @param data.socio
      * @param data.notaMin
      * @param data.esconderDisparo
+     * @param data.uf
      * @param data.pagina
      * @returns LeadsPagina Successful Response
      * @throws ApiError
@@ -175,6 +176,7 @@ export class LeadsService {
                 socio: data.socio,
                 nota_min: data.notaMin,
                 esconder_disparo: data.esconderDisparo,
+                uf: data.uf,
                 pagina: data.pagina
             },
             errors: {

@@ -468,6 +468,17 @@ export const CidadeSchema = {
             type: 'string',
             title: 'Nome'
         },
+        uf: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Uf'
+        },
         empresas: {
             type: 'integer',
             title: 'Empresas'
@@ -1296,6 +1307,13 @@ export const OpcoesSchema = {
             type: 'array',
             title: 'Nichos'
         },
+        ufs: {
+            items: {
+                '$ref': '#/components/schemas/Opcao'
+            },
+            type: 'array',
+            title: 'Ufs'
+        },
         cidades: {
             items: {
                 '$ref': '#/components/schemas/Cidade'
@@ -1333,7 +1351,7 @@ export const OpcoesSchema = {
         }
     },
     type: 'object',
-    required: ['nichos', 'cidades', 'portes', 'ofertas', 'pesos', 'motivos'],
+    required: ['nichos', 'ufs', 'cidades', 'portes', 'ofertas', 'pesos', 'motivos'],
     title: 'Opcoes'
 } as const;
 

@@ -63,6 +63,7 @@ class Opcao(BaseModel):
 
 
 class Cidade(Opcao):
+    uf: str | None = None
     empresas: int
 
 
@@ -72,6 +73,7 @@ class Perfil(Opcao):
 
 class Opcoes(BaseModel):
     nichos: list[Opcao]
+    ufs: list[Opcao]
     cidades: list[Cidade]
     portes: list[Opcao]
     ofertas: list[Perfil]
@@ -113,7 +115,9 @@ class FilaResultado(BaseModel):
     sem_whatsapp: int
 
 
-def _linhas_do_pedido(session: SessionDep, pedido: PlanilhaPedido) -> list[dict[str, Any]]:
+def _linhas_do_pedido(
+    session: SessionDep, pedido: PlanilhaPedido
+) -> list[dict[str, Any]]:
     q = {k: v for k, v in pedido.filtros.items() if v not in (None, "")}
     if "porte" in q and isinstance(q["porte"], str):
         q["porte"] = [q["porte"]]
@@ -142,6 +146,7 @@ def _filtros(
     socio: bool = False,
     nota_min: int | None = None,
     esconder_disparo: bool = False,
+    uf: str = "",
 ) -> repo.Filtros:
     return repo.Filtros(
         oferta=oferta,
@@ -160,6 +165,7 @@ def _filtros(
         socio=socio,
         nota_min=nota_min,
         esconder_disparo=esconder_disparo,
+        uf=uf.strip().upper(),
     )
 
 
@@ -168,6 +174,7 @@ def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
     """Listas para os filtros da busca."""
     return Opcoes(
         nichos=[Opcao(**n) for n in repo.nichos(session)],
+        ufs=[Opcao(**u) for u in repo.ufs(session)],
         cidades=[Cidade(**c) for c in repo.cidades(session)],
         portes=[Opcao(id=k, nome=v) for k, v in texto.FAIXAS.items()],
         ofertas=[Perfil(**p) for p in repo.perfis(session)],
@@ -196,6 +203,7 @@ def buscar(
     socio: bool = False,
     nota_min: int | None = None,
     esconder_disparo: bool = False,
+    uf: str = "",
     pagina: int = 1,
 ) -> Any:
     """Busca na base da Receita, da nota mais alta para a mais baixa."""
@@ -216,6 +224,7 @@ def buscar(
         socio,
         nota_min,
         esconder_disparo,
+        uf=uf,
     )
     linhas, total = repo.buscar(session, f, pagina)
     return LeadsPagina(

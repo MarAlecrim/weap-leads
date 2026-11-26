@@ -59,6 +59,7 @@ class Filtros:
     oferta: str = "geral"
     nicho: str = ""
     secundario: bool = False
+    uf: str = ""
     cidade: str = ""
     bairro: str = ""
     nome: str = ""
@@ -94,6 +95,9 @@ def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
             if f.secundario
             else "e.cnae_principal = ANY(:cnaes)"
         )
+    if f.uf:
+        w.append("e.uf = :uf")
+        p["uf"] = f.uf
     if f.cidade:
         w.append("e.municipio = :cidade")
         p["cidade"] = f.cidade
@@ -539,10 +543,19 @@ def cidades(s: Session) -> list[dict[str, Any]]:
         {
             "id": r["municipio"],
             "nome": f"{texto.nome_bonito(r['nome'])} - {r['uf']}",
+            "uf": r["uf"],
             "empresas": r["empresas"],
         }
         for r in rs
     ]
+
+
+def ufs(s: Session) -> list[dict[str, str]]:
+    """Estados que existem na base importada (RECEITA_UFS)."""
+    rs = s.execute(
+        text("SELECT DISTINCT uf FROM receita.cidades WHERE uf IS NOT NULL ORDER BY uf")
+    )
+    return [{"id": r[0], "nome": texto.UFS.get(r[0], r[0])} for r in rs]
 
 
 def clientes(s: Session) -> list[dict[str, Any]]:

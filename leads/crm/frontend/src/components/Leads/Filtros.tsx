@@ -43,6 +43,16 @@ function Marca({
 export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
   const set = <K extends keyof FiltrosBusca>(k: K, v: FiltrosBusca[K]) =>
     onChange({ ...f, [k]: v })
+  const cidades = (opcoes?.cidades ?? []).filter((c) => !f.uf || c.uf === f.uf)
+  const trocaEstado = (uf: string) => {
+    const cidade = opcoes?.cidades.find((c) => c.id === f.cidade)
+    // a cidade escolhida só fica se for do novo estado
+    onChange({
+      ...f,
+      uf,
+      cidade: !uf || cidade?.uf === uf ? f.cidade : "",
+    })
+  }
 
   return (
     <form
@@ -86,6 +96,22 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
           </select>
         </div>
         <div className="grid gap-1.5">
+          <Label htmlFor="uf">Estado</Label>
+          <select
+            id="uf"
+            className={selectCls}
+            value={f.uf}
+            onChange={(e) => trocaEstado(e.target.value)}
+          >
+            <option value="">Todos</option>
+            {opcoes?.ufs.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid gap-1.5">
           <Label htmlFor="cidade">Cidade</Label>
           <select
             id="cidade"
@@ -94,7 +120,7 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
             onChange={(e) => set("cidade", e.target.value)}
           >
             <option value="">Todas</option>
-            {opcoes?.cidades.map((c) => (
+            {cidades.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nome}
               </option>
