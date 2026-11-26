@@ -171,3 +171,27 @@ O cálculo leva alguns minutos. Enquanto ele roda, a busca usa a tabela anterior
 ```
 cd /opt/weap-leads && docker compose up -d --build api
 ```
+
+## Atualização: conexão dos números na Evolution
+
+Em **Admin → Números de WhatsApp** aparece a coluna **Conexão** (Conectado, Conectando, Desconectado ou "não achado"), atualizada a cada 30 segundos. O CRM pergunta a cada servidor da Evolution quais instâncias existem e como estão.
+
+No servidor, abra o `.env`:
+
+```
+nano /opt/weap-leads/.env
+```
+
+Acrescente uma linha com cada servidor da Evolution e a chave global dele (a mesma `AUTHENTICATION_API_KEY` da Evolution), separados por `;`. A chave fica só neste arquivo:
+
+```
+EVOLUTION_APIS=https://zap7.mercadonet.com.br|CHAVE_DA_ZAP7;https://ENDERECO_DA_OUTRA_EVOLUTION|CHAVE_DELA
+```
+
+Depois de copiar o `crm/` e o `docker-compose.yml` atualizados:
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
+
+Sem `EVOLUTION_APIS`, a tela funciona igual e só não mostra a coluna.

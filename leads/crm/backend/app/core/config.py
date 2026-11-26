@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     CIDADES_ATENDIDAS: str = "LONDRINA,CAMBE,IBIPORA,ARAPONGAS,ROLANDIA,APUCARANA"
     # Banco do agente (weap_sdr), só leitura: marca quem já está no disparo. Vazio = desligado.
     AGENTE_DB_URL: str | None = None
+    # Evolution API: "url|chave;url2|chave2" (só no .env do servidor). Vazio = não mostra a conexão.
+    EVOLUTION_APIS: str = ""
     # CRM interno: ninguém se cadastra sozinho; o admin cria os usuários.
     ALLOW_SIGNUP: bool = False
     SENTRY_DSN: HttpUrl | None = None

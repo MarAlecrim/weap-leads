@@ -213,11 +213,42 @@ function Formulario({
   )
 }
 
+const CONEXAO: Record<string, { texto: string; cor: string }> = {
+  conectado: { texto: "Conectado", cor: "bg-green-500" },
+  conectando: { texto: "Conectando", cor: "bg-yellow-500" },
+  desconectado: { texto: "Desconectado", cor: "bg-red-500" },
+}
+
+function Conexao({ estado }: { estado?: string }) {
+  if (!estado)
+    return (
+      <span
+        className="text-sm text-muted-foreground"
+        title="Esta instância não apareceu em nenhuma Evolution configurada"
+      >
+        não achado
+      </span>
+    )
+  const c = CONEXAO[estado] ?? { texto: estado, cor: "bg-muted-foreground" }
+  return (
+    <span className="flex items-center gap-2 text-sm">
+      <span className={`size-2 rounded-full ${c.cor}`} />
+      {c.texto}
+    </span>
+  )
+}
+
 /** Números de WhatsApp do disparo: estados, responsável, celular de aviso e ligado/desligado. */
 export function Numeros() {
   const { data: numeros, isLoading } = useQuery({
     queryKey: ["numeros"],
     queryFn: () => LeadsService.numeros(),
+  })
+  // conexão na Evolution: atualiza sozinha a cada 30 s
+  const { data: conexao } = useQuery({
+    queryKey: ["numeros", "conexao"],
+    queryFn: () => LeadsService.conexaoDosNumeros(),
+    refetchInterval: 30_000,
   })
   const [editando, setEditando] = useState<{
     dados: NumeroDados
@@ -271,6 +302,7 @@ export function Numeros() {
                 <TableHead>Aviso</TableHead>
                 <TableHead>Estados</TableHead>
                 <TableHead>Situação</TableHead>
+                {conexao?.configurado && <TableHead>Conexão</TableHead>}
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -295,6 +327,11 @@ export function Numeros() {
                       {n.ativo ? "Ligado" : "Desligado"}
                     </Badge>
                   </TableCell>
+                  {conexao?.configurado && (
+                    <TableCell>
+                      <Conexao estado={conexao.estados[n.instancia]} />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Button
                       variant="ghost"
@@ -310,6 +347,11 @@ export function Numeros() {
             </TableBody>
           </Table>
         </div>
+      )}
+      {conexao?.configurado && conexao.falhas.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Não consegui consultar a Evolution em {conexao.falhas.join(", ")}.
+        </p>
       )}
       <Dialog
         open={editando !== null}

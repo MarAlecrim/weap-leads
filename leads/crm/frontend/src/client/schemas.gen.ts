@@ -589,6 +589,32 @@ export const ColunaSchema = {
     title: 'Coluna'
 } as const;
 
+export const ConexoesSchema = {
+    properties: {
+        configurado: {
+            type: 'boolean',
+            title: 'Configurado'
+        },
+        estados: {
+            additionalProperties: {
+                type: 'string'
+            },
+            type: 'object',
+            title: 'Estados'
+        },
+        falhas: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Falhas'
+        }
+    },
+    type: 'object',
+    required: ['configurado', 'estados', 'falhas'],
+    title: 'Conexoes'
+} as const;
+
 export const DiaSchema = {
     properties: {
         dia: {

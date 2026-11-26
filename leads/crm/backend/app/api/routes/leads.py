@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, SessionDep, get_current_active_superuser
-from app.leads import repo, texto
+from app.leads import evolution, repo, texto
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -111,6 +111,12 @@ class Numero(BaseModel):
     cidade: str = ""
     ativo: bool
     ufs: list[str]
+
+
+class Conexoes(BaseModel):
+    configurado: bool
+    estados: dict[str, str]
+    falhas: list[str]
 
 
 class NumeroDados(BaseModel):
@@ -335,6 +341,16 @@ def numeros(_u: CurrentUser) -> Any:
     """Números de WhatsApp do disparo, com os estados de cada um (vazio se o banco do agente não estiver ligado)."""
     r = repo.numeros()
     return [Numero(**n) for n in r] if r is not None else None
+
+
+@router.get(
+    "/numeros/conexao",
+    response_model=Conexoes,
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def conexao_dos_numeros() -> Any:
+    """Se cada número está conectado na Evolution (só administrador)."""
+    return Conexoes(**evolution.conexoes())
 
 
 @router.post(
