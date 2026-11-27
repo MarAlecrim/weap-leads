@@ -50,6 +50,16 @@ export function CardFunil({ card, onAbrir }: Props) {
           .filter(Boolean)
           .join(" · ")}
       </div>
+      {card.ultimo_contato_em && (
+        <div className="truncate text-muted-foreground text-xs">
+          Contato {quando(card.ultimo_contato_em)}
+        </div>
+      )}
+      {card.ultima_resposta_em && (
+        <div className="truncate text-muted-foreground text-xs">
+          Resposta {quando(card.ultima_resposta_em)}
+        </div>
+      )}
       {semResposta >= DIAS_ALERTA && (
         <div className="mt-1 font-semibold text-destructive text-xs">
           Sem resposta: {dias(semResposta)}

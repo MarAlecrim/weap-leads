@@ -2,12 +2,14 @@
 
 import re
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from sqlmodel import col, select
 from sqlmodel.sql.expression import SelectOfScalar
 
@@ -42,6 +44,8 @@ class Card(BaseModel):
     proxima_acao: str | None
     proxima_acao_em: datetime | None
     perdido_motivo: str | None
+    ultimo_contato_em: datetime | None = None
+    ultima_resposta_em: datetime | None = None
 
 
 class Coluna(BaseModel):
@@ -72,6 +76,7 @@ class FunilOpcoes(BaseModel):
     motivos: list[str]
     responsaveis: list[Item]
     numeros: list[Item]
+    ordens: list[Item]
 
 
 class Mensagem(BaseModel):
@@ -173,7 +178,63 @@ def _card(n: Negocio, nomes: dict[Any, str], agora: datetime) -> Card:
         proxima_acao=n.proxima_acao,
         proxima_acao_em=n.proxima_acao_em,
         perdido_motivo=n.perdido_motivo,
+        ultimo_contato_em=n.ultimo_contato_em,
+        ultima_resposta_em=n.ultima_resposta_em,
     )
+
+
+# Ordem dos cards dentro de cada coluna. "recente" (padrão): último contato do disparo primeiro.
+ORDENS: dict[str, str] = {
+    "recente": "Contato mais recente",
+    "antigo": "Contato mais antigo",
+    "resposta": "Resposta mais recente",
+    "nota": "Maior nota",
+    "parado": "Mais tempo na etapa",
+    "nome": "Nome (A-Z)",
+}
+
+_NUNCA = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _ts(d: datetime | None) -> float:
+    return (d or _NUNCA).timestamp()
+
+
+def _chave_ordem(ordem: str) -> Callable[[Card], Any]:
+    def contato(c: Card) -> tuple[Any, ...]:
+        return (c.ultimo_contato_em is None, -_ts(c.ultimo_contato_em), -(c.nota or 0))
+
+    def antigo(c: Card) -> tuple[Any, ...]:
+        return (c.ultimo_contato_em is None, _ts(c.ultimo_contato_em), -(c.nota or 0))
+
+    def resposta(c: Card) -> tuple[Any, ...]:
+        return (
+            c.ultima_resposta_em is None,
+            -_ts(c.ultima_resposta_em),
+            -_ts(c.ultimo_contato_em),
+        )
+
+    def nota(c: Card) -> tuple[Any, ...]:
+        return (-(c.nota or 0), -c.dias_na_etapa)
+
+    def parado(c: Card) -> tuple[Any, ...]:
+        return (-c.dias_na_etapa, -(c.nota or 0))
+
+    def nome(c: Card) -> tuple[Any, ...]:
+        return (c.nome.casefold(),)
+
+    return {
+        "antigo": antigo,
+        "resposta": resposta,
+        "nota": nota,
+        "parado": parado,
+        "nome": nome,
+    }.get(ordem, contato)
+
+
+def ordenar(cards: list[Card], ordem: str) -> list[Card]:
+    """Ordena os cards de uma coluna. Quem não tem a data (ex.: "Na fila") vai para o fim, por nota."""
+    return sorted(cards, key=_chave_ordem(ordem))
 
 
 def _nomes(session: SessionDep) -> dict[Any, str]:
@@ -183,14 +244,12 @@ def _nomes(session: SessionDep) -> dict[Any, str]:
     }
 
 
-@router.get("/opcoes", response_model=FunilOpcoes)
-def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
+def _rotulos_numeros(session: SessionDep) -> dict[str, str]:
+    """Instância -> "7187 · Fabiano" (sdr_instancias do agente, mais as que já aparecem no funil)."""
     numeros: dict[str, str] = {}
     eng = repo._engine_agente()
     if eng:
         try:
-            from sqlalchemy import text
-
             with eng.connect() as c:
                 for r in c.execute(
                     text(
@@ -199,12 +258,20 @@ def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
                 ):
                     numeros[r.instancia] = (
                         f"{_numero(r.instancia)} · {r.responsavel_nome}"
+                        if r.responsavel_nome
+                        else (_numero(r.instancia) or r.instancia)
                     )
         except Exception:
             pass
     for (inst,) in session.execute(select(Negocio.instancia).distinct()).all():
         if inst and inst not in numeros:
             numeros[inst] = _numero(inst) or inst
+    return numeros
+
+
+@router.get("/opcoes", response_model=FunilOpcoes)
+def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
+    numeros = _rotulos_numeros(session)
     users = session.exec(select(User).where(User.is_active)).all()
     return FunilOpcoes(
         etapas=[Item(id=e, nome=n) for e, n in etapas.ETAPAS],
@@ -218,7 +285,161 @@ def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
             key=lambda i: i.nome,
         ),
         numeros=[Item(id=k, nome=v) for k, v in numeros.items()],
+        ordens=[Item(id=k, nome=v) for k, v in ORDENS.items()],
     )
+
+
+# ---------- Desempenho por número (banco do agente, sdr_mensagens) ----------
+SP = ZoneInfo("America/Sao_Paulo")
+MSGS_POR_ABORDAGEM = 2
+
+# Uma linha por (número, dia), por número, por dia e o total, num passo só.
+# Empresas = leads distintos que receberam o disparo; abordagens = registros do disparo (o n8n grava
+# um por abordagem, e cada abordagem manda MSGS_POR_ABORDAGEM mensagens no WhatsApp);
+# respostas = leads distintos que escreveram. A instância da resposta cai para a do lead se faltar.
+_SQL_DESEMPENHO = """
+WITH m AS (
+  SELECT coalesce(m.instancia, l.instancia, '') AS instancia,
+         (m.criado_em AT TIME ZONE 'America/Sao_Paulo')::date AS dia,
+         m.lead_id, m.autor, m.criado_em
+    FROM sdr_mensagens m
+    LEFT JOIN sdr_leads l ON l.id = m.lead_id
+   WHERE m.criado_em >= (CAST(:inicio AS date) AT TIME ZONE 'America/Sao_Paulo')
+     AND m.autor IN ('disparo', 'lead')
+)
+SELECT instancia, dia, GROUPING(instancia) AS sem_inst, GROUPING(dia) AS sem_dia,
+       count(DISTINCT lead_id) FILTER (WHERE autor = 'disparo') AS empresas,
+       count(*) FILTER (WHERE autor = 'disparo') AS abordagens,
+       count(DISTINCT lead_id) FILTER (WHERE autor = 'lead') AS respostas,
+       max(criado_em) FILTER (WHERE autor = 'disparo') AS ultimo_envio
+  FROM m
+ WHERE (CAST(:todas AS boolean) OR instancia = ANY(:inst))
+ GROUP BY GROUPING SETS ((instancia, dia), (instancia), (dia), ())
+"""
+
+
+class Contagem(BaseModel):
+    empresas: int
+    mensagens: int
+    respostas: int
+
+
+class DiaDesempenho(Contagem):
+    dia: date
+
+
+class NumeroDesempenho(Contagem):
+    instancia: str
+    nome: str
+    hoje: Contagem
+    ultimo_envio: datetime | None
+
+
+class Desempenho(BaseModel):
+    disponivel: bool
+    dias: int
+    total: Contagem
+    hoje: Contagem
+    numeros: list[NumeroDesempenho]
+    por_dia: list[DiaDesempenho]
+
+
+def desempenho_do_agente(
+    instancias: list[str] | None, dias: int, hoje: date
+) -> list[dict[str, Any]] | None:
+    """Linhas cruas do agente (ver _SQL_DESEMPENHO). None se o CRM não estiver ligado ao agente."""
+    eng = repo._engine_agente()
+    if not eng:
+        return None
+    inicio = hoje - timedelta(days=dias - 1)
+    with eng.connect() as c:
+        return [
+            dict(r._mapping)
+            for r in c.execute(
+                text(_SQL_DESEMPENHO),
+                {
+                    "inicio": inicio,
+                    "todas": instancias is None,
+                    "inst": instancias or [],
+                },
+            )
+        ]
+
+
+def montar_desempenho(
+    linhas: list[dict[str, Any]], rotulos: dict[str, str], dias: int, hoje: date
+) -> Desempenho:
+    def cont(r: dict[str, Any] | None) -> Contagem:
+        if not r:
+            return Contagem(empresas=0, mensagens=0, respostas=0)
+        return Contagem(
+            empresas=r["empresas"],
+            mensagens=r["abordagens"] * MSGS_POR_ABORDAGEM,
+            respostas=r["respostas"],
+        )
+
+    por_inst_dia: dict[tuple[str, date], dict[str, Any]] = {}
+    por_inst: dict[str, dict[str, Any]] = {}
+    por_dia: dict[date, dict[str, Any]] = {}
+    total: dict[str, Any] | None = None
+    for r in linhas:
+        if r["sem_inst"] and r["sem_dia"]:
+            total = r
+        elif r["sem_inst"]:
+            por_dia[r["dia"]] = r
+        elif r["sem_dia"]:
+            por_inst[r["instancia"]] = r
+        else:
+            por_inst_dia[(r["instancia"], r["dia"])] = r
+    numeros = [
+        NumeroDesempenho(
+            instancia=inst,
+            nome=rotulos.get(inst) or _numero(inst) or "Sem número",
+            hoje=cont(por_inst_dia.get((inst, hoje))),
+            ultimo_envio=r["ultimo_envio"],
+            **cont(r).model_dump(),
+        )
+        for inst, r in por_inst.items()
+    ]
+    numeros.sort(key=lambda n: (-n.hoje.empresas, -n.empresas, n.nome))
+    return Desempenho(
+        disponivel=True,
+        dias=dias,
+        total=cont(total),
+        hoje=cont(por_dia.get(hoje)),
+        numeros=numeros,
+        por_dia=[
+            DiaDesempenho(dia=d, **cont(por_dia.get(d)).model_dump())
+            for d in (hoje - timedelta(days=i) for i in range(dias))
+        ],
+    )
+
+
+@router.get("/desempenho", response_model=Desempenho)
+def desempenho(
+    session: SessionDep,
+    u: CurrentUser,
+    instancia: str | None = None,
+    dias: int = Query(default=14, ge=1, le=90),
+) -> Any:
+    """Por número de WhatsApp: empresas abordadas, mensagens do disparo e respostas, por dia (Brasília).
+    O vendedor só vê os números dele."""
+    hoje = datetime.now(SP).date()
+    instancias: list[str] | None = None if ve_tudo(u) else list(u.numeros or [])
+    if instancia is not None:
+        if instancias is not None and instancia not in instancias:
+            instancias = []
+        else:
+            instancias = [instancia]
+    vazio = montar_desempenho([], {}, dias, hoje)
+    try:
+        linhas = desempenho_do_agente(instancias, dias, hoje)
+    except Exception:
+        linhas = None
+    if linhas is None:
+        vazio.disponivel = False
+        return vazio
+    return montar_desempenho(linhas, _rotulos_numeros(session), dias, hoje)
 
 
 @router.get("/", response_model=Funil)
@@ -230,6 +451,7 @@ def funil(
     origem: str | None = None,
     parados: bool = False,
     busca: str = Query(default="", max_length=100),
+    ordem: str = Query(default="recente", max_length=20),
     limites: str = Query(
         default="", max_length=300, description='ex.: "contatado:60,respondeu:40"'
     ),
@@ -272,8 +494,7 @@ def funil(
         ]
     colunas = []
     for e, nome in etapas.ETAPAS:
-        da = [c for c in cards if c.etapa == e]
-        da.sort(key=lambda c: (-(c.nota or 0), -c.dias_na_etapa))
+        da = ordenar([c for c in cards if c.etapa == e], ordem)
         colunas.append(
             Coluna(
                 etapa=e,

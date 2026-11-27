@@ -3,7 +3,7 @@
 import type { CancelablePromise } from './core/CancelablePromise';
 import { OpenAPI } from './core/OpenAPI';
 import { request as __request } from './core/request';
-import type { FunilOpcoesResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsNumerosResponse, LeadsCriarNumeroData, LeadsCriarNumeroResponse, LeadsConexaoDosNumerosResponse, LeadsAlterarNumeroData, LeadsAlterarNumeroResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
+import type { FunilOpcoesResponse, FunilDesempenhoData, FunilDesempenhoResponse, FunilFunilData, FunilFunilResponse, FunilFichaData, FunilFichaResponse, FunilAtualizarData, FunilAtualizarResponse, FunilNovaNotaData, FunilNovaNotaResponse, LeadsOpcoesResponse, LeadsBuscarData, LeadsBuscarResponse, LeadsClientesResponse, LeadsFilaResponse, LeadsNumerosResponse, LeadsCriarNumeroData, LeadsCriarNumeroResponse, LeadsConexaoDosNumerosResponse, LeadsAlterarNumeroData, LeadsAlterarNumeroResponse, LeadsFichaData, LeadsFichaResponse, LeadsMandarParaDisparoData, LeadsMandarParaDisparoResponse, LeadsPlanilhaData, LeadsPlanilhaResponse, LoginLoginAccessTokenData, LoginLoginAccessTokenResponse, LoginTestTokenResponse, LoginRecoverPasswordData, LoginRecoverPasswordResponse, LoginResetPasswordData, LoginResetPasswordResponse, LoginRecoverPasswordHtmlContentData, LoginRecoverPasswordHtmlContentResponse, PainelPainelResponse, PrivateCreateUserData, PrivateCreateUserResponse, UsersReadUsersData, UsersReadUsersResponse, UsersCreateUserData, UsersCreateUserResponse, UsersReadUserMeResponse, UsersDeleteUserMeResponse, UsersUpdateUserMeData, UsersUpdateUserMeResponse, UsersUpdatePasswordMeData, UsersUpdatePasswordMeResponse, UsersRegisterUserData, UsersRegisterUserResponse, UsersReadUserByIdData, UsersReadUserByIdResponse, UsersUpdateUserData, UsersUpdateUserResponse, UsersDeleteUserData, UsersDeleteUserResponse, UtilsTestEmailData, UtilsTestEmailResponse, UtilsHealthCheckResponse } from './types.gen';
 
 export class FunilService {
     /**
@@ -19,6 +19,30 @@ export class FunilService {
     }
     
     /**
+     * Desempenho
+     * Por número de WhatsApp: empresas abordadas, mensagens do disparo e respostas, por dia (Brasília).
+     * O vendedor só vê os números dele.
+     * @param data The data for the request.
+     * @param data.instancia
+     * @param data.dias
+     * @returns Desempenho Successful Response
+     * @throws ApiError
+     */
+    public static desempenho(data: FunilDesempenhoData = {}): CancelablePromise<FunilDesempenhoResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/funil/desempenho',
+            query: {
+                instancia: data.instancia,
+                dias: data.dias
+            },
+            errors: {
+                422: 'Validation Error'
+            }
+        });
+    }
+    
+    /**
      * Funil
      * @param data The data for the request.
      * @param data.responsavelId
@@ -26,6 +50,7 @@ export class FunilService {
      * @param data.origem
      * @param data.parados
      * @param data.busca
+     * @param data.ordem
      * @param data.limites ex.: "contatado:60,respondeu:40"
      * @returns Funil Successful Response
      * @throws ApiError
@@ -40,6 +65,7 @@ export class FunilService {
                 origem: data.origem,
                 parados: data.parados,
                 busca: data.busca,
+                ordem: data.ordem,
                 limites: data.limites
             },
             errors: {
