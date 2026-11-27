@@ -227,6 +227,30 @@ export const CardSchema = {
                 }
             ],
             title: 'Perdido Motivo'
+        },
+        ultimo_contato_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ultimo Contato Em'
+        },
+        ultima_resposta_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ultima Resposta Em'
         }
     },
     type: 'object',
@@ -404,6 +428,30 @@ export const CardFichaSchema = {
                 }
             ],
             title: 'Perdido Motivo'
+        },
+        ultimo_contato_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ultimo Contato Em'
+        },
+        ultima_resposta_em: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ultima Resposta Em'
         },
         telefone: {
             anyOf: [
@@ -615,6 +663,62 @@ export const ConexoesSchema = {
     title: 'Conexoes'
 } as const;
 
+export const ContagemSchema = {
+    properties: {
+        empresas: {
+            type: 'integer',
+            title: 'Empresas'
+        },
+        mensagens: {
+            type: 'integer',
+            title: 'Mensagens'
+        },
+        respostas: {
+            type: 'integer',
+            title: 'Respostas'
+        }
+    },
+    type: 'object',
+    required: ['empresas', 'mensagens', 'respostas'],
+    title: 'Contagem'
+} as const;
+
+export const DesempenhoSchema = {
+    properties: {
+        disponivel: {
+            type: 'boolean',
+            title: 'Disponivel'
+        },
+        dias: {
+            type: 'integer',
+            title: 'Dias'
+        },
+        total: {
+            '$ref': '#/components/schemas/Contagem'
+        },
+        hoje: {
+            '$ref': '#/components/schemas/Contagem'
+        },
+        numeros: {
+            items: {
+                '$ref': '#/components/schemas/NumeroDesempenho'
+            },
+            type: 'array',
+            title: 'Numeros'
+        },
+        por_dia: {
+            items: {
+                '$ref': '#/components/schemas/DiaDesempenho'
+            },
+            type: 'array',
+            title: 'Por Dia'
+        }
+    },
+    type: 'object',
+    required: ['disponivel', 'dias', 'total', 'hoje', 'numeros', 'por_dia'],
+    title: 'Desempenho'
+} as const;
+
 export const DiaSchema = {
     properties: {
         dia: {
@@ -634,6 +738,31 @@ export const DiaSchema = {
     type: 'object',
     required: ['dia', 'enviados', 'respostas'],
     title: 'Dia'
+} as const;
+
+export const DiaDesempenhoSchema = {
+    properties: {
+        empresas: {
+            type: 'integer',
+            title: 'Empresas'
+        },
+        mensagens: {
+            type: 'integer',
+            title: 'Mensagens'
+        },
+        respostas: {
+            type: 'integer',
+            title: 'Respostas'
+        },
+        dia: {
+            type: 'string',
+            format: 'date',
+            title: 'Dia'
+        }
+    },
+    type: 'object',
+    required: ['empresas', 'mensagens', 'respostas', 'dia'],
+    title: 'DiaDesempenho'
 } as const;
 
 export const EtapaContagemSchema = {
@@ -795,10 +924,17 @@ export const FunilOpcoesSchema = {
             },
             type: 'array',
             title: 'Numeros'
+        },
+        ordens: {
+            items: {
+                '$ref': '#/components/schemas/Item'
+            },
+            type: 'array',
+            title: 'Ordens'
         }
     },
     type: 'object',
-    required: ['etapas', 'servicos', 'motivos', 'responsaveis', 'numeros'],
+    required: ['etapas', 'servicos', 'motivos', 'responsaveis', 'numeros', 'ordens'],
     title: 'FunilOpcoes'
 } as const;
 
@@ -1391,6 +1527,49 @@ export const NumeroDadosSchema = {
     required: ['instancia', 'responsavel', 'aviso'],
     title: 'NumeroDados',
     description: 'Cadastro de um número pela tela do Admin.'
+} as const;
+
+export const NumeroDesempenhoSchema = {
+    properties: {
+        empresas: {
+            type: 'integer',
+            title: 'Empresas'
+        },
+        mensagens: {
+            type: 'integer',
+            title: 'Mensagens'
+        },
+        respostas: {
+            type: 'integer',
+            title: 'Respostas'
+        },
+        instancia: {
+            type: 'string',
+            title: 'Instancia'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        hoje: {
+            '$ref': '#/components/schemas/Contagem'
+        },
+        ultimo_envio: {
+            anyOf: [
+                {
+                    type: 'string',
+                    format: 'date-time'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Ultimo Envio'
+        }
+    },
+    type: 'object',
+    required: ['empresas', 'mensagens', 'respostas', 'instancia', 'nome', 'hoje', 'ultimo_envio'],
+    title: 'NumeroDesempenho'
 } as const;
 
 export const OpcaoSchema = {

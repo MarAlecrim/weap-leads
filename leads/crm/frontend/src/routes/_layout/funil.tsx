@@ -9,6 +9,7 @@ import { useState } from "react"
 
 import { type Card, type Coluna, FunilService } from "@/client"
 import { CardFunil } from "@/components/Funil/CardFunil"
+import { Desempenho } from "@/components/Funil/Desempenho"
 import { FichaFunil } from "@/components/Funil/FichaFunil"
 import { ORIGENS, reais, selectCls } from "@/components/Funil/util"
 import { Button } from "@/components/ui/button"
@@ -33,6 +34,7 @@ type Filtros = {
   origem: string
   parados: boolean
   busca: string
+  ordem: string
 }
 
 const VAZIO: Filtros = {
@@ -41,6 +43,7 @@ const VAZIO: Filtros = {
   origem: "",
   parados: false,
   busca: "",
+  ordem: "recente",
 }
 
 function Funil() {
@@ -79,6 +82,7 @@ function Funil() {
         origem: f.origem || undefined,
         parados: f.parados,
         busca: f.busca || undefined,
+        ordem: f.ordem,
         limites:
           Object.entries(limites)
             .map(([e, n]) => `${e}:${n}`)
@@ -172,6 +176,20 @@ function Funil() {
             </option>
           ))}
         </select>
+        <select
+          aria-label="Ordem dos cards"
+          className={cn(selectCls, "w-auto")}
+          value={f.ordem}
+          onChange={(e) => setF({ ...f, ordem: e.target.value })}
+        >
+          {(
+            opcoes?.ordens ?? [{ id: "recente", nome: "Contato mais recente" }]
+          ).map((o) => (
+            <option key={o.id} value={o.id}>
+              Ordem: {o.nome}
+            </option>
+          ))}
+        </select>
         <Button
           variant={f.parados ? "default" : "outline"}
           onClick={() => setF({ ...f, parados: !f.parados })}
@@ -204,6 +222,11 @@ function Funil() {
           </Button>
         )}
       </div>
+
+      <Desempenho
+        instancia={f.instancia}
+        onEscolher={(instancia) => setF({ ...f, instancia })}
+      />
 
       {data && !data.ligado_ao_agente && (
         <p className="rounded-md border border-amber-500/50 p-3 text-sm">

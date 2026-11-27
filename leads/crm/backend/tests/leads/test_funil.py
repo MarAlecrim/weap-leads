@@ -384,3 +384,238 @@ def test_painel(
     assert [e["etapa"] for e in p["etapas"]] == [e for e, _ in etapas.ETAPAS]
     num = next(x for x in p["por_numero"] if x["instancia"] == "Teste-1111")
     assert (num["contatados"], num["responderam"]) == (3, 2)
+
+
+def test_ordenar_cards() -> None:
+    from app.api.routes.funil import ordenar
+
+    agora = datetime.now(timezone.utc)
+    a = _card_teste(1, "Beta", contato=agora - timedelta(days=2), nota=90)
+    b = _card_teste(2, "alfa", contato=agora, resposta=agora - timedelta(days=5))
+    c = _card_teste(3, "Gama", nota=50, dias=7)  # na fila, sem contato
+    d = _card_teste(4, "Delta", contato=agora - timedelta(days=1), resposta=agora)
+
+    def ids(ordem: str) -> list[int]:
+        return [x.id for x in ordenar([a, b, c, d], ordem)]
+
+    assert ids("recente") == [2, 4, 1, 3]
+    assert ids("qualquer") == [2, 4, 1, 3]  # desconhecida cai no padrão
+    assert ids("antigo") == [1, 4, 2, 3]
+    assert ids("resposta") == [4, 2, 1, 3]
+    assert ids("nota") == [1, 3, 2, 4]  # empate: ordem de chegada
+    assert ids("parado") == [3, 1, 2, 4]
+    assert ids("nome") == [2, 1, 4, 3]
+
+
+def _card_teste(
+    id: int,
+    nome: str,
+    contato: datetime | None = None,
+    resposta: datetime | None = None,
+    nota: int | None = None,
+    dias: int = 0,
+) -> Any:
+    from app.api.routes.funil import Card
+
+    return Card(
+        id=id,
+        nome=nome,
+        cnpj=None,
+        cidade=None,
+        origem="receita",
+        nota=nota,
+        instancia=None,
+        numero=None,
+        responsavel_id=None,
+        responsavel=None,
+        etapa="contatado",
+        valor_cents=None,
+        servico=None,
+        dias_na_etapa=dias,
+        dias_sem_resposta=None,
+        ia_pausada=False,
+        proxima_acao=None,
+        proxima_acao_em=None,
+        perdido_motivo=None,
+        ultimo_contato_em=contato,
+        ultima_resposta_em=resposta,
+    )
+
+
+@pytest.mark.usefixtures("limpo")
+def test_funil_ordem_padrao_mais_recente(
+    client: TestClient, db: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    agora = datetime.now(timezone.utc)
+    sincronia.aplicar(
+        db,
+        [
+            _linha(
+                "5599000000021",
+                status="contatado",
+                ultimo_contato_em=agora - timedelta(days=3),
+                nota=99,
+            ),
+            _linha("5599000000022", status="contatado", ultimo_contato_em=agora),
+        ],
+    )
+    r = client.get(
+        f"{API}/", headers=superuser_token_headers, params={"busca": "Empresa 2"}
+    )
+    col_ = next(c for c in r.json()["colunas"] if c["etapa"] == "contatado")
+    nomes = [c["nome"] for c in col_["cards"]]
+    assert nomes.index("Empresa 22") < nomes.index("Empresa 21")
+    r = client.get(
+        f"{API}/",
+        headers=superuser_token_headers,
+        params={"busca": "Empresa 2", "ordem": "antigo"},
+    )
+    col_ = next(c for c in r.json()["colunas"] if c["etapa"] == "contatado")
+    nomes = [c["nome"] for c in col_["cards"]]
+    assert nomes.index("Empresa 21") < nomes.index("Empresa 22")
+    assert col_["cards"][0]["ultimo_contato_em"]
+
+
+def test_montar_desempenho() -> None:
+    from datetime import date
+
+    from app.api.routes.funil import montar_desempenho
+
+    hoje = date(2026, 11, 27)
+    ontem = date(2026, 11, 26)
+
+    def lin(
+        inst: str | None, dia: date | None, emp: int, abord: int, resp: int
+    ) -> dict[str, Any]:
+        return {
+            "instancia": inst,
+            "dia": dia,
+            "sem_inst": int(inst is None),
+            "sem_dia": int(dia is None),
+            "empresas": emp,
+            "abordagens": abord,
+            "respostas": resp,
+            "ultimo_envio": None,
+        }
+
+    linhas = [
+        lin("Weap-Fabiano-7187", hoje, 10, 10, 2),
+        lin("Weap-Fabiano-7187", ontem, 5, 5, 1),
+        lin("Weap-Fabiano-7187", None, 14, 15, 3),  # 1 lead abordado nos dois dias
+        lin("Weap-7407", ontem, 4, 4, 0),
+        lin("Weap-7407", None, 4, 4, 0),
+        lin(None, hoje, 10, 10, 2),
+        lin(None, ontem, 9, 9, 1),
+        lin(None, None, 18, 19, 3),
+    ]
+    d = montar_desempenho(linhas, {"Weap-Fabiano-7187": "7187 · Fabiano"}, 3, hoje)
+    assert d.disponivel and d.dias == 3
+    assert (d.total.empresas, d.total.mensagens, d.total.respostas) == (18, 38, 3)
+    assert d.hoje.empresas == 10
+    assert [n.nome for n in d.numeros] == ["7187 · Fabiano", "7407"]
+    f = d.numeros[0]
+    assert (f.empresas, f.mensagens, f.hoje.empresas, f.hoje.mensagens) == (
+        14,
+        30,
+        10,
+        20,
+    )
+    assert d.numeros[1].hoje.empresas == 0
+    assert [x.dia for x in d.por_dia] == [hoje, ontem, date(2026, 11, 25)]
+    assert [x.empresas for x in d.por_dia] == [10, 9, 0]
+
+
+def test_desempenho_sem_agente(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    r = client.get(
+        f"{API}/desempenho", headers=superuser_token_headers, params={"dias": 7}
+    )
+    assert r.status_code == 200
+    d = r.json()
+    if not settings.AGENTE_DB_URL:
+        assert d["disponivel"] is False and len(d["por_dia"]) == 7
+    assert (
+        client.get(
+            f"{API}/desempenho", headers=superuser_token_headers, params={"dias": 0}
+        ).status_code
+        == 422
+    )
+
+
+def test_desempenho_do_agente_de_verdade(
+    client: TestClient,
+    superuser_token_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Roda a consulta de desempenho no banco do agente de teste (AGENTE_DB_URL_TESTE), se houver."""
+    import os
+
+    from sqlalchemy import create_engine, text
+
+    from app.leads import repo
+
+    url = os.environ.get("AGENTE_DB_URL_TESTE", "")
+    if not url:
+        pytest.skip("sem banco do agente de teste")
+    eng = create_engine(url)
+    inst = "Teste-Desemp-9911"
+    with eng.begin() as c:
+        c.execute(text("DELETE FROM sdr_leads WHERE chave LIKE '559911%'"))
+        ids = [
+            c.execute(
+                text(
+                    "INSERT INTO sdr_leads (chave, instancia) VALUES (:c, :i) RETURNING id"
+                ),
+                {"c": f"559911000000{k}", "i": inst},
+            ).scalar()
+            for k in range(3)
+        ]
+        for lid in ids:
+            c.execute(
+                text(
+                    "INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto) "
+                    "VALUES (:l, :i, 'out', 'disparo', 'Oi')"
+                ),
+                {"l": lid, "i": inst},
+            )
+        # resposta sem instância na mensagem: vale a do lead; e a IA não conta
+        c.execute(
+            text(
+                "INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto) VALUES "
+                "(:l, NULL, 'in', 'lead', 'Quanto?'), (:l, :i, 'out', 'ia', 'R$ 350'),"
+                "(:l, :i, 'in', 'lead', 'Ok')"
+            ),
+            {"l": ids[0], "i": inst},
+        )
+        # disparo de 2 dias atrás
+        c.execute(
+            text(
+                "INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto, criado_em) "
+                "VALUES (:l, :i, 'out', 'disparo', 'Oi', now() - interval '2 days')"
+            ),
+            {"l": ids[1], "i": inst},
+        )
+    monkeypatch.setattr(settings, "AGENTE_DB_URL", url)
+    repo._engine_agente.cache_clear()
+    try:
+        r = client.get(
+            f"{API}/desempenho",
+            headers=superuser_token_headers,
+            params={"instancia": inst, "dias": 7},
+        )
+        assert r.status_code == 200
+        d = r.json()
+        assert d["disponivel"]
+        assert [n["instancia"] for n in d["numeros"]] == [inst]
+        n = d["numeros"][0]
+        assert (n["empresas"], n["mensagens"], n["respostas"]) == (3, 8, 1)
+        assert (n["hoje"]["empresas"], n["hoje"]["respostas"]) == (3, 1)
+        assert d["por_dia"][0]["empresas"] == 3 and d["por_dia"][2]["empresas"] == 1
+        assert d["total"]["empresas"] == 3
+        todos = client.get(f"{API}/desempenho", headers=superuser_token_headers).json()
+        assert inst in [x["instancia"] for x in todos["numeros"]]
+    finally:
+        repo._engine_agente.cache_clear()
+        with eng.begin() as c:
+            c.execute(text("DELETE FROM sdr_leads WHERE chave LIKE '559911%'"))

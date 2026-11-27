@@ -29,6 +29,8 @@ export type Card = {
     proxima_acao: (string | null);
     proxima_acao_em: (string | null);
     perdido_motivo: (string | null);
+    ultimo_contato_em?: (string | null);
+    ultima_resposta_em?: (string | null);
 };
 
 export type CardFicha = {
@@ -51,6 +53,8 @@ export type CardFicha = {
     proxima_acao: (string | null);
     proxima_acao_em: (string | null);
     perdido_motivo: (string | null);
+    ultimo_contato_em?: (string | null);
+    ultima_resposta_em?: (string | null);
     telefone: (string | null);
     resumo: (string | null);
     mensagens: Array<Mensagem>;
@@ -96,10 +100,32 @@ export type Conexoes = {
     falhas: Array<(string)>;
 };
 
+export type Contagem = {
+    empresas: number;
+    mensagens: number;
+    respostas: number;
+};
+
+export type Desempenho = {
+    disponivel: boolean;
+    dias: number;
+    total: Contagem;
+    hoje: Contagem;
+    numeros: Array<NumeroDesempenho>;
+    por_dia: Array<DiaDesempenho>;
+};
+
 export type Dia = {
     dia: string;
     enviados: number;
     respostas: number;
+};
+
+export type DiaDesempenho = {
+    empresas: number;
+    mensagens: number;
+    respostas: number;
+    dia: string;
 };
 
 export type EtapaContagem = {
@@ -141,6 +167,7 @@ export type FunilOpcoes = {
     motivos: Array<(string)>;
     responsaveis: Array<Item>;
     numeros: Array<Item>;
+    ordens: Array<Item>;
 };
 
 export type HTTPValidationError = {
@@ -270,6 +297,16 @@ export type NumeroDados = {
     cidade?: string;
     ativo?: boolean;
     ufs?: Array<(string)>;
+};
+
+export type NumeroDesempenho = {
+    empresas: number;
+    mensagens: number;
+    respostas: number;
+    instancia: string;
+    nome: string;
+    hoje: Contagem;
+    ultimo_envio: (string | null);
 };
 
 export type Opcao = {
@@ -423,6 +460,13 @@ export type ValidationError = {
 
 export type FunilOpcoesResponse = (FunilOpcoes);
 
+export type FunilDesempenhoData = {
+    dias?: number;
+    instancia?: (string | null);
+};
+
+export type FunilDesempenhoResponse = (Desempenho);
+
 export type FunilFunilData = {
     busca?: string;
     instancia?: (string | null);
@@ -430,6 +474,7 @@ export type FunilFunilData = {
      * ex.: "contatado:60,respondeu:40"
      */
     limites?: string;
+    ordem?: string;
     origem?: (string | null);
     parados?: boolean;
     responsavelId?: (string | null);
