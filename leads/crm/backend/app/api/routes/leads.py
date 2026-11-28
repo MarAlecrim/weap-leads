@@ -120,6 +120,17 @@ class Conexoes(BaseModel):
     falhas: list[str]
 
 
+class Nicho(BaseModel):
+    id: str
+    nome: str
+    cnaes: list[Opcao]
+
+
+class NichoDados(BaseModel):
+    nome: str
+    cnaes: list[str]
+
+
 class NumeroDados(BaseModel):
     """Cadastro de um número pela tela do Admin."""
 
@@ -385,6 +396,54 @@ def alterar_numero(instancia: str, dados: NumeroDados) -> None:
     """Muda estados, responsável, celular de aviso e ligado/desligado de um número (só administrador)."""
     d = _limpa_numero(dados.model_copy(update={"instancia": instancia}))
     _salva(d, novo=False)
+
+
+@router.get(
+    "/nichos",
+    response_model=list[Nicho],
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def nichos(session: SessionDep) -> Any:
+    """Nichos da busca e as atividades (CNAE) de cada um (só administrador)."""
+    return [Nicho(**n) for n in repo.nichos_com_cnaes(session)]
+
+
+def _salva_nicho(session: SessionDep, dados: NichoDados, antigo: str | None) -> str:
+    try:
+        return repo.salvar_nicho(session, dados.nome, dados.cnaes, antigo)
+    except repo.NichoInvalido as e:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@router.post(
+    "/nichos",
+    status_code=201,
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def criar_nicho(session: SessionDep, dados: NichoDados) -> str:
+    """Cria um nicho para a busca (só administrador). Devolve o id do nicho."""
+    return _salva_nicho(session, dados, None)
+
+
+@router.put(
+    "/nichos/{nicho}",
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def alterar_nicho(session: SessionDep, nicho: str, dados: NichoDados) -> str:
+    """Muda o nome e as atividades de um nicho (só administrador)."""
+    return _salva_nicho(session, dados, nicho)
+
+
+@router.delete(
+    "/nichos/{nicho}",
+    status_code=204,
+    dependencies=[Depends(get_current_active_superuser)],
+)
+def apagar_nicho(session: SessionDep, nicho: str) -> None:
+    """Tira um nicho da lista da busca (só administrador)."""
+    if not repo.apagar_nicho(session, nicho):
+        raise HTTPException(status_code=404, detail="Nicho não encontrado")
 
 
 @router.get("/{cnpj}", response_model=LeadFicha)

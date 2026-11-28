@@ -722,6 +722,90 @@ def cnaes(s: Session) -> list[dict[str, str]]:
     ]
 
 
+class NichoInvalido(ValueError):
+    pass
+
+
+def chave_nicho(nome: str) -> str:
+    return " ".join(nome.split()).lower()
+
+
+def nichos_com_cnaes(s: Session) -> list[dict[str, Any]]:
+    """Nichos da busca com as atividades de cada um (tela do Admin)."""
+    rs = s.execute(
+        text(
+            """SELECT n.nicho, n.cnae, coalesce(c.descricao, n.rotulo, '') AS descricao
+                 FROM receita.nicho_cnaes n
+                 LEFT JOIN receita.cnaes c ON c.codigo = n.cnae
+                ORDER BY n.nicho, n.cnae"""
+        )
+    ).mappings()
+    saida: dict[str, dict[str, Any]] = {}
+    for r in rs:
+        n = saida.setdefault(
+            r["nicho"],
+            {"id": r["nicho"], "nome": texto.nome_nicho(r["nicho"]), "cnaes": []},
+        )
+        n["cnaes"].append(
+            {
+                "id": r["cnae"],
+                "nome": f"{texto.cnae(r['cnae'])} {r['descricao']}".strip(),
+            }
+        )
+    return list(saida.values())
+
+
+def salvar_nicho(s: Session, nome: str, cnaes: list[str], antigo: str | None) -> str:
+    """Cria ou troca um nicho (nome e atividades). `antigo` = nicho que está sendo editado."""
+    chave = chave_nicho(nome)
+    if antigo and chave == chave_nicho(texto.nome_nicho(antigo)):
+        chave = antigo  # só reabriu e salvou: "Saúde" continua sendo "saude"
+    if not chave:
+        raise NichoInvalido("Dê um nome ao nicho.")
+    codigos = list(dict.fromkeys(so_digitos(c) for c in cnaes))
+    if not codigos:
+        raise NichoInvalido("Escolha pelo menos uma atividade.")
+    desc: dict[str, str] = {
+        r[0]: r[1] or ""
+        for r in s.execute(
+            text("SELECT codigo, descricao FROM receita.cnaes WHERE codigo = ANY(:c)"),
+            {"c": codigos},
+        )
+    }
+    if faltam := [c for c in codigos if c not in desc]:
+        raise NichoInvalido(
+            "Atividade que não existe na Receita: "
+            + ", ".join(texto.cnae(c) for c in faltam)
+        )
+    existe = s.execute(
+        text("SELECT 1 FROM receita.nicho_cnaes WHERE nicho = :n LIMIT 1"),
+        {"n": chave},
+    ).first()
+    if existe and chave != antigo:
+        raise NichoInvalido("Já existe um nicho com esse nome.")
+    s.execute(
+        text("DELETE FROM receita.nicho_cnaes WHERE nicho = ANY(:n)"),
+        {"n": [chave, antigo] if antigo else [chave]},
+    )
+    s.execute(
+        text(
+            "INSERT INTO receita.nicho_cnaes (nicho, cnae, rotulo) "
+            "SELECT :n, x, (CAST(:d AS text[]))[i] FROM unnest(CAST(:c AS text[])) WITH ORDINALITY AS t(x, i)"
+        ),
+        {"n": chave, "c": codigos, "d": [desc[c] for c in codigos]},
+    )
+    s.commit()
+    return chave
+
+
+def apagar_nicho(s: Session, nicho: str) -> bool:
+    r = s.execute(
+        text("DELETE FROM receita.nicho_cnaes WHERE nicho = :n"), {"n": nicho}
+    )
+    s.commit()
+    return bool(r.rowcount)  # type: ignore[attr-defined]
+
+
 def nichos(s: Session) -> list[dict[str, str]]:
     rs = s.execute(
         text("SELECT DISTINCT nicho FROM receita.nicho_cnaes ORDER BY nicho")

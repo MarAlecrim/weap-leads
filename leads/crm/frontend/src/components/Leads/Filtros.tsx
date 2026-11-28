@@ -1,12 +1,10 @@
-import { X } from "lucide-react"
-import { useState } from "react"
-
 import type { Opcoes } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { type FiltrosBusca, filtrosPadrao } from "./api"
+import { EscolheCnae } from "./EscolheCnae"
 
 const selectCls =
   "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-input/30"
@@ -57,21 +55,6 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
     })
   }
 
-  const [cnaeTexto, setCnaeTexto] = useState("")
-  const nomeCnae = (id: string) =>
-    opcoes?.cnaes.find((c) => c.id === id)?.nome ?? id
-  // aceita escolher da lista ou digitar o código (4781-4/00 ou 4781400)
-  const addCnae = (v: string) => {
-    const achado = opcoes?.cnaes.find((c) => c.nome === v)
-    const digitos = v.replace(/\D/g, "")
-    const id =
-      achado?.id ??
-      (digitos.length === 7 && /^[\d\s./-]+$/.test(v.trim()) ? digitos : "")
-    if (!id) return false
-    if (!f.cnae.includes(id)) set("cnae", [...f.cnae, id])
-    setCnaeTexto("")
-    return true
-  }
   const comCnpj = f.cnpj.replace(/\D/g, "").length > 0
 
   return (
@@ -101,53 +84,12 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
         </div>
         <div className="grid gap-1.5 sm:col-span-2">
           <Label htmlFor="cnae">Atividade (CNAE)</Label>
-          <Input
+          <EscolheCnae
             id="cnae"
-            list="lista-cnaes"
-            value={cnaeTexto}
-            placeholder="digite o código ou parte do nome e escolha"
-            onChange={(e) => {
-              // escolher na lista já adiciona
-              if (!addCnae(e.target.value) || e.target.value === "")
-                setCnaeTexto(e.target.value)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && cnaeTexto) {
-                e.preventDefault()
-                addCnae(cnaeTexto)
-              }
-            }}
+            cnaes={opcoes?.cnaes ?? []}
+            valor={f.cnae}
+            onChange={(v) => set("cnae", v)}
           />
-          <datalist id="lista-cnaes">
-            {opcoes?.cnaes.map((c) => (
-              <option key={c.id} value={c.nome} />
-            ))}
-          </datalist>
-          {f.cnae.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {f.cnae.map((c) => (
-                <span
-                  key={c}
-                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs"
-                >
-                  <span className="truncate">{nomeCnae(c)}</span>
-                  <button
-                    type="button"
-                    aria-label={`Tirar ${c}`}
-                    className="text-muted-foreground hover:text-foreground"
-                    onClick={() =>
-                      set(
-                        "cnae",
-                        f.cnae.filter((x) => x !== c),
-                      )
-                    }
-                  >
-                    <X className="size-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="cnae_em">Procurar a atividade na</Label>

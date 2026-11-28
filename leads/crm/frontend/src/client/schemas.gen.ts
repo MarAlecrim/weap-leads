@@ -1405,6 +1405,48 @@ export const NewPasswordSchema = {
     title: 'NewPassword'
 } as const;
 
+export const NichoSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id'
+        },
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        cnaes: {
+            items: {
+                '$ref': '#/components/schemas/Opcao'
+            },
+            type: 'array',
+            title: 'Cnaes'
+        }
+    },
+    type: 'object',
+    required: ['id', 'nome', 'cnaes'],
+    title: 'Nicho'
+} as const;
+
+export const NichoDadosSchema = {
+    properties: {
+        nome: {
+            type: 'string',
+            title: 'Nome'
+        },
+        cnaes: {
+            items: {
+                type: 'string'
+            },
+            type: 'array',
+            title: 'Cnaes'
+        }
+    },
+    type: 'object',
+    required: ['nome', 'cnaes'],
+    title: 'NichoDados'
+} as const;
+
 export const NotaSchema = {
     properties: {
         id: {
