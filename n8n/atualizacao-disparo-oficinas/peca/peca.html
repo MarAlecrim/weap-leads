@@ -1,0 +1,52 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1350px;overflow:hidden;background:#0c0b0f;font-family:'Plus Jakarta Sans',sans-serif;color:#f4efe4;position:relative}
+.glow1{position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(242,180,20,.28),rgba(242,180,20,0) 65%);left:-260px;top:420px}
+.glow2{position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(76,51,140,.55),rgba(76,51,140,0) 65%);right:-320px;top:240px}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:54px 54px}
+.top{position:absolute;left:72px;right:72px;top:64px}
+.tag{display:inline-flex;gap:12px;align-items:center;font-weight:800;font-size:22px;letter-spacing:.14em;color:#f2b414;text-transform:uppercase}
+.tag i{display:inline-block;width:44px;height:3px;background:#f2b414}
+h1{font-family:'Oswald',sans-serif;font-weight:700;font-size:92px;line-height:1.0;text-transform:uppercase;margin-top:20px;letter-spacing:.005em}
+h1 em{font-style:normal;color:#f2b414}
+.sub{margin-top:22px;font-size:31px;line-height:1.4;color:#cfc8bb;font-weight:500;max-width:900px}
+.sub b{color:#fff;font-weight:700}
+.phone{position:absolute;width:330px;height:690px;border-radius:52px;background:#111;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,.6),0 0 0 2px #2b2b30 inset,0 0 0 1px #3a3a40}
+.phone .scr{width:100%;height:100%;border-radius:40px;overflow:hidden;position:relative;background:#000}
+.phone .scr img{width:100%;display:block}
+.phone .notch{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:96px;height:26px;background:#000;border-radius:20px;z-index:3}
+.p1{left:110px;top:520px;transform:rotate(-5deg)}
+.p2{left:640px;top:520px;transform:rotate(5deg)}
+.lbl{position:absolute;font-family:'Oswald',sans-serif;font-weight:600;font-size:26px;letter-spacing:.08em;text-transform:uppercase;background:#f2b414;color:#14110a;padding:10px 20px;border-radius:12px;z-index:5;box-shadow:0 10px 24px rgba(0,0,0,.45)}
+.l1{left:72px;top:1095px;transform:rotate(-5deg)}
+.l2{left:742px;top:1095px;transform:rotate(5deg)}
+.plus{position:absolute;left:505px;top:820px;width:70px;height:70px;border-radius:50%;background:#4C338C;color:#fff;font-weight:800;font-size:46px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 8px rgba(76,51,140,.25)}
+.ig-head{background:#000;color:#fff;padding:52px 14px 10px;font-size:13px;display:flex;align-items:center;gap:10px}
+.ig-head .av{width:46px;height:46px;border-radius:50%;background:#000 url(site-hero.jpg) -13px -42px/246px auto;border:2px solid #d62976}
+.ig-head b{font-size:14px;display:block}
+.ig-head span{color:#aaa;font-size:11px}
+.foot{position:absolute;left:0;right:0;bottom:0;height:150px;background:linear-gradient(180deg,rgba(12,11,15,0),#0c0b0f 45%);display:flex;align-items:flex-end;justify-content:space-between;padding:0 72px 46px}
+.foot .msg{font-size:27px;color:#e9e3d6;font-weight:600}
+.foot .msg b{color:#f2b414}
+.brand{font-family:'Plus Jakarta Sans';font-weight:800;font-size:46px;letter-spacing:-.02em;color:#fff;display:flex;align-items:center;gap:12px}
+.brand s{text-decoration:none;display:inline-block;width:16px;height:16px;border-radius:4px;background:#4C338C;box-shadow:20px 0 0 #f2b414}
+</style></head><body>
+<div class="grid"></div><div class="glow1"></div><div class="glow2"></div>
+<div class="top">
+  <div class="tag"><i></i>Case WEAP · Oficina mecânica</div>
+  <h1>Sua oficina com<br><em>essa cara</em> na internet</h1>
+  <p class="sub">Site e Instagram da <b>Garage 03</b>, de Curitiba, feitos pela WEAP. Cliente vê, confia e chama no WhatsApp.</p>
+</div>
+<div class="phone p1"><div class="scr"><div class="notch"></div><img src="site-hero.jpg"></div></div>
+<div class="phone p2"><div class="scr"><div class="notch"></div>
+  <div class="ig-head"><div class="av"></div><div><b>garage_03_autocenter</b><span>Oficina Mecânica Curitiba</span></div></div>
+  <img src="ig-1.jpg" style="margin-top:0">
+</div></div>
+<div class="plus">+</div>
+<div class="lbl l1">Site</div>
+<div class="lbl l2">Instagram</div>
+<div class="foot"><div class="msg">garage03.com.br · <b>@garage_03_autocenter</b></div><div class="brand">WEAP</div></div>
+</body></html>

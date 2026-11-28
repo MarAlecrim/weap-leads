@@ -1,0 +1,1602 @@
+{
+ "name": "02 - SDR WEAP - 0859 - Oficinas",
+ "nodes": [
+  {
+   "id": "dde6b322-2174-44fb-9904-bcefc91cb59a",
+   "name": "Filter",
+   "type": "n8n-nodes-base.filter",
+   "typeVersion": 2.2,
+   "position": [
+    -2848,
+    544
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "de08f3a9-dde8-42c0-bdd4-182a3029f81e",
+       "leftValue": "={{ $json.mensagem }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "empty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "e854f5e7-5245-433b-9fd3-461fd066350c",
+   "name": "Loop Over Items",
+   "type": "n8n-nodes-base.splitInBatches",
+   "typeVersion": 3,
+   "position": [
+    -2192,
+    528
+   ],
+   "parameters": {
+    "options": {
+     "reset": "={{ $node[\"Loop Over Items\"].context[\"done\"]}}"
+    }
+   }
+  },
+  {
+   "id": "a783b1ef-3dd4-48ef-8eba-a784645e6ad8",
+   "name": "If",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -1936,
+    576
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "1cba9986-342d-4bdf-b4af-94b56de82b6b",
+       "leftValue": "={{ $json.website }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "notEmpty",
+        "singleValue": true
+       }
+      },
+      {
+       "id": "2c1e833d-b3a1-47fb-9c43-9635ddb17d90",
+       "leftValue": "={{ $json.website }}",
+       "rightValue": "www.instagram.com",
+       "operator": {
+        "type": "string",
+        "operation": "notContains"
+       }
+      },
+      {
+       "id": "57a4c36c-ce81-449f-bae2-1c0244739a89",
+       "leftValue": "={{ $json.website }}",
+       "rightValue": "https://wa.me/",
+       "operator": {
+        "type": "string",
+        "operation": "notContains"
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "5ee3ec2f-d5d7-469e-9b73-b951c394a692",
+   "name": "Jina AI - Scraper",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "onError": "continueRegularOutput",
+   "position": [
+    -1712,
+    432
+   ],
+   "parameters": {
+    "url": "=https://r.jina.ai/{{ $node[\"Loop Over Items\"].json[\"website\"] }}",
+    "options": {}
+   }
+  },
+  {
+   "id": "e94d8856-8485-4789-8c09-abde623e13ff",
+   "name": "Envia MSG Texto",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -160,
+    528
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"server_url\"] }}/message/sendText/{{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"instancia\"] }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "apikey",
+       "value": "={{ $item(\"0\").$node[\"Dados_Evolution\"].json[\"api_key\"] }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "bodyParameters": {
+     "parameters": [
+      {
+       "name": "number",
+       "value": "={{ $('Loop Over Items').item.json.telefone }}"
+      },
+      {
+       "name": "text",
+       "value": "={{ $item(0).$node[\"Loop Over Items1\"].json[\"message\"] ?? (Number($('Checa lead no banco').first().json.contatos || 0) > 0 ? 'Oi, aqui é o ' + ($('Checa lead no banco').first().json.responsavel || 'Cláudio') + ', da WEAP. Te mandei uns dias atrás o site e o Instagram que fizemos para a Garage 03. Chegou a ver? Se não for o momento, tranquilo.' : 'Oi, tudo bem? Aqui é o ' + ($('Checa lead no banco').first().json.responsavel || 'Cláudio') + ', da WEAP. Fizemos o site e o Instagram da Garage 03, uma oficina de Curitiba: o cliente vê o serviço, entende o preço e já chama no WhatsApp. Faz sentido algo assim para a sua oficina?') }}"
+      }
+     ]
+    },
+    "options": {
+     "redirect": {
+      "redirect": {}
+     }
+    }
+   }
+  },
+  {
+   "id": "6afb1409-1a04-4687-8eae-94f8a358e6e5",
+   "name": "Split Out",
+   "type": "n8n-nodes-base.splitOut",
+   "typeVersion": 1,
+   "position": [
+    -960,
+    544
+   ],
+   "parameters": {
+    "fieldToSplitOut": "content",
+    "options": {}
+   }
+  },
+  {
+   "id": "d495d776-4e3a-488b-9024-6ee4de00b736",
+   "name": "Loop Over Items1",
+   "type": "n8n-nodes-base.splitInBatches",
+   "typeVersion": 3,
+   "position": [
+    -416,
+    512
+   ],
+   "parameters": {
+    "batchSize": "=1",
+    "options": {
+     "reset": "={{ $node[\"Loop Over Items1\"].context[\"done\"]}}"
+    }
+   }
+  },
+  {
+   "id": "8daba9a2-2ff3-4698-833c-646f50d85d1d",
+   "name": "Wait",
+   "webhookId": "16106538-227c-4893-8fe2-0c4af96ec752",
+   "type": "n8n-nodes-base.wait",
+   "typeVersion": 1.1,
+   "position": [
+    32,
+    528
+   ],
+   "parameters": {
+    "amount": 3
+   }
+  },
+  {
+   "id": "6cd9dbcc-2d3a-45c2-afdb-c0a0e42377d5",
+   "name": "Merge",
+   "type": "n8n-nodes-base.merge",
+   "typeVersion": 3,
+   "position": [
+    -2400,
+    528
+   ],
+   "parameters": {
+    "mode": "chooseBranch",
+    "useDataOfInput": 2
+   }
+  },
+  {
+   "id": "b1c65f2e-6d71-4afc-9138-11d93ffad1d1",
+   "name": "Dados_Evolution",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    -2656,
+    352
+   ],
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "bc2a1451-2a6d-450e-8adf-b4fc1fd342d7",
+       "name": "server_url",
+       "value": "https://zap7.mercadonet.com.br",
+       "type": "string"
+      },
+      {
+       "id": "31ef30af-2137-4896-b7ca-99e154646676",
+       "name": "instancia",
+       "value": "Weap-0859",
+       "type": "string"
+      },
+      {
+       "id": "3bf78965-9d9f-4710-8822-42b592d1533d",
+       "name": "api_key",
+       "value": "COLE_AQUI_A_CHAVE_DA_INSTANCIA",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "de8b04bf-d70f-4eb2-a625-09d79cfe9c5e",
+   "name": "PegaMensagem",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    -1152,
+    544
+   ],
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "6d1d590b-c9a3-480c-bc1f-705278d96300",
+       "name": "content",
+       "value": "={{ $json.message.content.messages }}",
+       "type": "array"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "2da922b4-2021-4ab8-900d-1328c005c40d",
+   "name": "Sticky Note3",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -3840,
+    48
+   ],
+   "parameters": {
+    "content": "# DISPARO OFICINAS (case Garage 03)",
+    "height": 80,
+    "width": 700,
+    "color": 6
+   }
+  },
+  {
+   "id": "636f623e-16a1-49a4-b706-3025365673af",
+   "name": "Sticky Note",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -2864,
+    144
+   ],
+   "parameters": {
+    "content": "# Filtra e junta os dados",
+    "height": 600,
+    "width": 840
+   }
+  },
+  {
+   "id": "13ef253e-b622-4283-a41a-2a563bf99d9c",
+   "name": "Sticky Note1",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -2720,
+    272
+   ],
+   "parameters": {
+    "content": "## Alterar aqui",
+    "height": 260,
+    "color": 7
+   }
+  },
+  {
+   "id": "6e7c729d-e495-47da-b8c5-e2a73141d92b",
+   "name": "Sticky Note4",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -2000,
+    288
+   ],
+   "parameters": {
+    "content": "# Busca informações no site e prepara uma mensagem",
+    "height": 460,
+    "width": 1180,
+    "color": 4
+   }
+  },
+  {
+   "id": "8a27be45-f89a-4797-ae80-f7d428b71a68",
+   "name": "Sticky Note5",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -800,
+    208
+   ],
+   "parameters": {
+    "content": "# Dispara mensagens uma a uma",
+    "height": 540,
+    "width": 1000,
+    "color": 5
+   }
+  },
+  {
+   "id": "6132281b-6227-40ec-ab45-c7bcb03a5d32",
+   "name": "Sticky Note6",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -1776,
+    368
+   ],
+   "parameters": {
+    "content": "## Alterar aqui",
+    "height": 360,
+    "width": 560,
+    "color": 7
+   }
+  },
+  {
+   "id": "dad6e406-6069-4afa-a90c-7078f3b393a9",
+   "name": "Marca enviado na fila",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "alwaysOutputData": true,
+   "position": [
+    -176,
+    304
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "UPDATE sdr_fila SET status = 'enviado', enviado_em = now(), instancia = $2, mensagem = $3\n WHERE id = $1::bigint;\n",
+    "options": {
+     "queryReplacement": "={{ [ $('Pega lead da fila').first().json.fila_id, $('Dados_Evolution').first().json.instancia, (() => { try { return $('Message a model').first().json.message.content.messages.map(m => m.message).join(' '); } catch (e) { return ''; } })() ] }}"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "9613df66-258f-4d7a-8828-9721b5562783",
+   "name": "Schedule Trigger",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    -3776,
+    496
+   ],
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "32,47 7 * * 1-5"
+      },
+      {
+       "field": "cronExpression",
+       "expression": "2,17,32,47 8-18 * * 1-5"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "f45554a3-175a-4986-b5a6-27e8c34163e7",
+   "name": "If1",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -3280,
+    496
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "8ef42ffb-0574-4939-9ba4-1c43dea0f20e",
+       "leftValue": "={{ $json.mensagem }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "notEmpty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "92384298-1e4b-44cd-9616-7bcf89195b98",
+   "name": "No Operation, do nothing",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    -3104,
+    304
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "ea5ecc4a-f9a4-4024-87ef-c36e7d60876c",
+   "name": "Wait2",
+   "webhookId": "41693f2f-ba46-4ae2-b255-4355bbe41139",
+   "type": "n8n-nodes-base.wait",
+   "typeVersion": 1.1,
+   "position": [
+    -688,
+    528
+   ],
+   "parameters": {
+    "amount": 2
+   }
+  },
+  {
+   "id": "ef480ad9-85fc-47fc-bbd1-ec8abb744537",
+   "name": "Sticky Note12",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -3840,
+    144
+   ],
+   "parameters": {
+    "content": "# Captura dados ",
+    "height": 520,
+    "width": 960,
+    "color": 3
+   }
+  },
+  {
+   "id": "ab365801-3137-4569-85be-7d4c31f1485c",
+   "name": "Pega lead da fila",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    -3504,
+    496
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "UPDATE sdr_fila f\n   SET status = 'pegando', pego_em = now(), tentativas = f.tentativas + 1\n WHERE f.id = (\n   SELECT id FROM sdr_fila\n    WHERE (status = 'novo'\n           OR (status = 'pegando' AND pego_em < now() - interval '30 minutes' AND tentativas < 2))\n      -- Número só de oficinas: pega apenas as levas em que ele foi marcado no CRM.\n      AND $1 = ANY(instancias)\n    ORDER BY nota DESC, id\n    FOR UPDATE SKIP LOCKED\n    LIMIT 1)\nRETURNING f.id AS fila_id, f.nome_empresa, f.telefone, f.endereco, f.cidade,\n          coalesce(f.website, '') AS website, '' AS rating, '' AS reviews,\n          f.especialidades, '' AS mensagem, '' AS disparo, f.origem;\n",
+    "options": {
+     "queryReplacement": "={{ [ \"Weap-0859\" ] }}"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "ed5d30fc-432c-40d7-9caa-f5a24a4ee90c",
+   "name": "Code",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -3648,
+    256
+   ],
+   "parameters": {
+    "jsCode": "// Executa o código de geração do número aleatório\nconst min = 30;\nconst max = 60;\nconst randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;\n\n// Retorna o valor em um array de objetos com a propriedade \"json\"\nreturn [\n  {\n    json: {\n      randomNumber: randomNumber,\n    },\n  },\n];"
+   }
+  },
+  {
+   "id": "9741c8fb-43e1-4411-a323-6b0f1cd2461e",
+   "name": "Message a model",
+   "type": "@n8n/n8n-nodes-langchain.openAi",
+   "typeVersion": 1.6,
+   "position": [
+    -1488,
+    544
+   ],
+   "parameters": {
+    "modelId": {
+     "__rl": true,
+     "value": "gpt-4o-mini-2024-07-18",
+     "mode": "list",
+     "cachedResultName": "GPT-4O-MINI-2024-07-18"
+    },
+    "messages": {
+     "values": [
+      {
+       "content": "=# PAPEL\n\nVocê é um copywriter sênior de resposta direta, especialista em prospecção pelo WhatsApp para oficinas mecânicas, auto centers e funilarias. Escreve como gente: direto, confiante, simpático e sem enrolação. Cada palavra precisa merecer estar ali.\n\n# CONTEXTO\n\nVocê escreve mensagens de WhatsApp em nome de um consultor da WEAP. O nome dele vem no campo \"Quem escreve\". A WEAP faz site e gestão de redes sociais (Instagram) para oficinas.\n\nPROVA (use só estes fatos, nunca invente outros):\n- A WEAP fez o site e cuida do Instagram da Garage 03, oficina mecânica de Curitiba (bairro Boqueirão), que atende desde 2003.\n- O site (garage03.com.br) mostra os serviços, as promoções com preço claro, o passo a passo do atendimento e tem botão para agendar pelo WhatsApp.\n- O Instagram (@garage_03_autocenter) tem posts de serviço com preço, dicas (luzes do painel, checklist antes de viajar, mitos do câmbio automático) e vídeos do dono na oficina.\n- Logo depois das mensagens de primeiro contato, vai uma imagem mostrando o site e o Instagram da Garage 03.\nNUNCA cite números de resultado da Garage 03 (clientes, vendas, faturamento, seguidores, posição no Google). Não temos esses números.\n\nDe onde vem o lead está no campo \"Origem\":\n- google_maps (ou vazio): pode dizer que encontrou a oficina no Google Maps.\n- receita: NÃO diga Google Maps, NÃO cite Receita Federal, CNPJ, cadastro ou \"base de dados\" e NÃO diga o nome do sócio. Diga só que viu que a oficina atua na cidade (se vier a Cidade) ou no segmento.\n\n# QUAL MENSAGEM ESCREVER\n\nCampo \"Mensagens já enviadas a este lead\":\n- 0: PRIMEIRO CONTATO (2 mensagens).\n- 1 ou mais: RECONTATO (1 mensagem).\n\n# DADOS DE ENTRADA\n\nQuem escreve, Mensagens já enviadas, Primeira mensagem enviada, Nome da empresa, Scraper do site, Rating no Google, Reviews no Google, Especialidades, Origem, Cidade.\nUse SOMENTE o que foi fornecido sobre o lead. Nunca invente serviço, cidade, tempo de mercado, nome do dono ou qualquer fato.\n- Nome da empresa em caixa alta ou com LTDA/ME/EIRELI: escreva de forma natural (ex.: \"AUTO MECANICA SILVA LTDA\" vira \"Auto Mecânica Silva\").\n- Scraper vazio, com erro ou sem informação útil: não diga que viu o site e NÃO afirme que a oficina não tem site.\n- Rating 4,0 ou mais com avaliações: pode citar uma vez como ponto forte. Abaixo de 4,0 ou ausente: não fale de nota.\n\n# PRIMEIRO CONTATO (2 MENSAGENS)\n\nObjetivo: em 10 segundos de leitura, o dono da oficina entende quem é, o que você mostra e responde. As duas mensagens são lidas juntas e a imagem da Garage 03 chega logo depois.\n\nMensagem 1 (gancho, 15 a 28 palavras):\n- Cumprimento curto + \"[nome], da WEAP\" + um detalhe real da oficina (serviço, especialidade, cidade ou nota boa).\n- Uma frase que gere curiosidade e ligue a oficina ao assunto: o cliente de oficina escolhe pelo celular antes de sair de casa.\n- Sem pergunta.\n\nMensagem 2 (prova + pergunta, 22 a 38 palavras):\n- A prova: a WEAP fez o site e cuida do Instagram da Garage 03, oficina de Curitiba, onde o cliente vê o serviço, entende o preço e já chama no WhatsApp.\n- Avise que vai mandar como ficou, logo abaixo (a imagem vem em seguida).\n- Termine com UMA pergunta fácil de responder com sim ou não, ligada à oficina do lead. Exemplos de pergunta (varie, não copie sempre a mesma): \"Faz sentido algo assim para a [oficina]?\", \"Hoje vocês já usam o Instagram para trazer cliente?\", \"Vocês já têm site ou ainda é só indicação?\".\n\nExemplo (oficina fictícia, não copie as frases):\nEntrada: Quem escreve: Cláudio | Mensagens já enviadas: 0 | Origem: receita | Cidade: Londrina | AUTO CENTER RODA VIVA LTDA | Especialidades: Serviços de manutenção e reparação mecânica de veículos automotores | scraper vazio\n{\"messages\":[{\"part\":1,\"message\":\"Oi, tudo bem? Aqui é o Cláudio, da WEAP. Vi que o Auto Center Roda Viva atende em Londrina, e hoje quem procura oficina escolhe pelo celular antes de sair de casa.\"},{\"part\":2,\"message\":\"Fizemos o site e o Instagram da Garage 03, uma oficina de Curitiba: o cliente vê o serviço, entende o preço e já chama no WhatsApp. Te mando abaixo como ficou. Faz sentido algo assim para vocês?\"}]}\n\n# RECONTATO (1 MENSAGEM, 18 a 35 palavras)\n\nA pessoa já recebeu o primeiro contato com a imagem da Garage 03 e não respondeu. Não presuma o motivo.\n- \"Oi, aqui é o [nome], da WEAP\" + referência leve à mensagem anterior (o exemplo da Garage 03, o site e o Instagram).\n- UMA pergunta fácil, que aceite até um \"agora não\".\n- Se \"Mensagens já enviadas\" for 2 ou mais, é a última tentativa: diga com gentileza que não vai mais incomodar e que fica à disposição.\n- Proibido cobrar ou culpar (\"não tive retorno\", \"você não respondeu\", \"sumiu\").\n\nExemplo (oficina fictícia, não copie as frases):\n{\"messages\":[{\"part\":1,\"message\":\"Oi, aqui é o Cláudio, da WEAP. Te mandei uns dias atrás o site e o Instagram que fizemos para a Garage 03. Chegou a ver? Se não for o momento, tranquilo.\"}]}\n\n# ESTILO\n\n- Português do Brasil, frases curtas, palavras do dia a dia da oficina (cliente, carro, orçamento, agenda, WhatsApp). Nada de jargão de marketing (\"branding\", \"funil\", \"engajamento\", \"ROI\", \"presença digital\").\n- Fale de igual para igual com o dono da oficina.\n- No máximo 1 emoji por mensagem, nunca no início. Zero também é ótimo.\n- Texto simples, sem negrito, listas ou links.\n- Varie a abertura entre leads.\n\n# PROIBIDO\n\n- Promessa de resultado (mais clientes garantidos, dobrar faturamento, primeiro lugar no Google).\n- Números de resultado da Garage 03.\n- Crítica ao site, às redes ou à fachada da oficina do lead.\n- Urgência ou pressão (\"só hoje\", \"últimas vagas\").\n- Preço da WEAP, proposta, convite para reunião ou ligação.\n- Mais de uma pergunta por mensagem.\n- Elogio genérico que serviria para qualquer empresa.\n\n# CHECAGEM FINAL\n\nAntes de responder, confira e reescreva se algo falhar:\n- Modo certo pelo número de mensagens já enviadas?\n- Primeiro contato: exatamente 2 mensagens; a 1ª sem pergunta, a 2ª com a prova da Garage 03, o aviso de que vai mandar como ficou e UMA pergunta.\n- Recontato: exatamente 1 mensagem.\n- Usei o nome de \"Quem escreve\"?\n- Todo fato sobre o lead está nos dados? Todo fato da Garage 03 está na PROVA?\n- Dá para ler em 10 segundos?\n\n# FORMATO DE SAÍDA\n\nResponda APENAS com um objeto JSON válido, sem texto antes ou depois, sem blocos de código. Escape aspas dentro das mensagens.\nPrimeiro contato: {\"messages\":[{\"part\":1,\"message\":\"...\"},{\"part\":2,\"message\":\"...\"}]}\nRecontato: {\"messages\":[{\"part\":1,\"message\":\"...\"}]}\n",
+       "role": "system"
+      },
+      {
+       "content": "=Quem escreve: {{ $('Checa lead no banco').first().json.responsavel || 'Fabiano' }}\nMensagens já enviadas a este lead: {{ Math.max(Number($('Checa lead no banco').first().json.contatos || 0), $('Loop Over Items').first().json.primeiro_contato ? 1 : 0) }}\nPrimeira mensagem enviada: {{ $('Checa lead no banco').first().json.primeira_mensagem || $('Loop Over Items').first().json.primeiro_contato || '' }}\nNome da empresa: {{ $('Loop Over Items').first().json.nome_empresa }}\nScraper do site da empresa: {{ $json.data }}\nRating no Google: {{ $('Loop Over Items').first().json.rating }}\nReviews no Google: {{ $('Loop Over Items').first().json.reviews }}\nEspecialidades: {{ $('Loop Over Items').first().json.especialidades }}\nOrigem: {{ $('Loop Over Items').first().json.origem || 'google_maps' }}\nCidade: {{ $('Loop Over Items').first().json.cidade || '' }}\n"
+      }
+     ]
+    },
+    "jsonOutput": true,
+    "options": {}
+   },
+   "credentials": {
+    "openAiApi": {
+     "id": "6s6eu25QvLJxlLBX",
+     "name": "OpenAI account"
+    }
+   }
+  },
+  {
+   "id": "d89693cf-4d4b-4aa4-bb4f-31a1b7e448cf",
+   "name": "Checa lead no banco",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "alwaysOutputData": true,
+   "onError": "continueRegularOutput",
+   "position": [
+    -2192,
+    752
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT (sdr_feriado_hoje() IS NOT NULL\n        OR coalesce(bool_or(l.opt_out OR sdr_em_conversa(l.status) OR (outro.dono IS NOT NULL)), false)) AS pular,\n       -- Em feriado a linha fica para o próximo dia útil: não envia e não marca nada na planilha.\n       (sdr_feriado_hoje() IS NOT NULL\n        OR coalesce(bool_or(outro.dono IS NOT NULL AND NOT (l.opt_out OR sdr_em_conversa(l.status))), false)) AS deixar_para_dono,\n       coalesce('feriado: ' || sdr_feriado_hoje(), max(CASE WHEN l.status = 'bot' THEN 'número é robô ou atendimento automático'\n                WHEN l.opt_out THEN 'pediu para não receber'\n                WHEN sdr_em_conversa(l.status) THEN 'já está conversando (' || l.status || ')'\n                WHEN outro.dono IS NOT NULL THEN 'já é lead do número ' || outro.dono END)) AS motivo,\n       coalesce(max(l.contatos_enviados), 0) AS contatos,\n       max(l.primeira_mensagem) AS primeira_mensagem,\n       (SELECT coalesce(nome_ia, responsavel_nome) FROM sdr_instancias WHERE instancia = $2) AS responsavel\n  FROM sdr_leads l\n  -- O recontato sai do mesmo número que mandou a 1ª mensagem (o \"dono\" do lead).\n  -- Os outros números deixam a linha para ele. Se o dono não disparou nada nos últimos 2 dias\n  -- (workflow desligado), qualquer número pode mandar, para a fila não travar.\n  LEFT JOIN LATERAL (\n    SELECT l.instancia AS dono\n     WHERE l.contatos_enviados > 0\n       AND l.instancia IS NOT NULL\n       AND l.instancia <> $2\n       AND EXISTS (SELECT 1 FROM sdr_instancias i WHERE i.instancia = l.instancia AND i.ativo)\n       AND EXISTS (SELECT 1 FROM sdr_mensagens m\n                    WHERE m.instancia = l.instancia AND m.autor = 'disparo'\n                      AND m.criado_em > now() - interval '2 days')\n  ) outro ON true\n WHERE l.chave = sdr_chave($1);\n",
+    "options": {
+     "queryReplacement": "={{ [ String($('Loop Over Items').first().json.telefone || ''), String($('Dados_Evolution').first().json.instancia || '') ] }}\n"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "1be6ae60-454a-4f3e-8561-96105072feeb",
+   "name": "Pular lead?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -2000,
+    752
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "4181ea9c-2d32-53ba-9949-d6c299335434",
+       "leftValue": "={{ $json.pular === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "ee8e6910-f2c8-4fef-8b46-394c0b246d35",
+   "name": "Marca pulado na fila",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    -1776,
+    912
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "UPDATE sdr_fila\n   SET status      = CASE WHEN $2 LIKE 'feriado:%' THEN 'novo' ELSE 'pulado' END,\n       tentativas  = CASE WHEN $2 LIKE 'feriado:%' THEN greatest(tentativas - 1, 0) ELSE tentativas END,\n       pego_em     = CASE WHEN $2 LIKE 'feriado:%' THEN NULL ELSE pego_em END,\n       motivo      = $2,\n       instancia   = CASE WHEN $2 LIKE 'feriado:%' THEN instancia ELSE $3 END\n WHERE id = $1::bigint;\n",
+    "options": {
+     "queryReplacement": "={{ [ $('Pega lead da fila').first().json.fila_id, String($json.motivo || ''), $('Dados_Evolution').first().json.instancia ] }}"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "bdf62ec7-35c5-473c-8289-59cde688f4c0",
+   "name": "Volta dados do lead",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -1776,
+    752
+   ],
+   "parameters": {
+    "jsCode": "// Devolve os dados da planilha para o resto do fluxo seguir igual\nreturn [{ json: $('Loop Over Items').first().json }];"
+   }
+  },
+  {
+   "id": "a936ab0e-4215-44cb-8925-daaee4c0f18b",
+   "name": "Registra lead no banco",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "onError": "continueRegularOutput",
+   "position": [
+    48,
+    304
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "WITH up AS (\n  INSERT INTO sdr_leads (chave, telefone, instancia, nome_empresa, especialidades, nicho, planilha, status,\n                         primeira_mensagem, ultima_mensagem_enviada, contatos_enviados, ultimo_contato_em)\n  SELECT sdr_chave($1), $1, $2, nullif($3, ''), nullif($4, ''), 'oficina', nullif($5, ''), 'contatado', $6, $6, 1, now()\n   WHERE sdr_chave($1) IS NOT NULL\n  ON CONFLICT (chave) DO UPDATE SET\n     instancia = EXCLUDED.instancia,\n     nome_empresa = coalesce(sdr_leads.nome_empresa, EXCLUDED.nome_empresa),\n     especialidades = coalesce(sdr_leads.especialidades, EXCLUDED.especialidades),\n     nicho = 'oficina',\n     planilha = coalesce(sdr_leads.planilha, EXCLUDED.planilha),\n     primeira_mensagem = coalesce(sdr_leads.primeira_mensagem, EXCLUDED.primeira_mensagem),\n     ultima_mensagem_enviada = EXCLUDED.ultima_mensagem_enviada,\n     contatos_enviados = sdr_leads.contatos_enviados + 1,\n     ultimo_contato_em = now(), atualizado_em = now()\n  RETURNING id, nicho, contatos_enviados\n),\nmsg AS (\n  INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto)\n  SELECT id, $2, 'out', 'disparo', $6 FROM up\n)\nSELECT up.id AS lead_id, m.id AS midia_id, m.tipo, m.url, m.legenda, m.descricao\n  FROM up\n  LEFT JOIN LATERAL (\n    SELECT * FROM sdr_midias\n     -- Disparo de oficinas: a imagem do case Garage 03 vai só no 1º contato,\n     -- sem depender do sdr_config.midia_no_disparo (que vale para os outros números).\n     WHERE ativo AND usar_no_disparo AND nicho = 'oficina' AND up.contatos_enviados = 1\n     ORDER BY (tipo = 'image') DESC, id LIMIT 1\n  ) m ON true;",
+    "options": {
+     "queryReplacement": "={{ (() => { const l = $('Loop Over Items').first().json; let msg = ''; try { msg = $('Message a model').first().json.message.content.messages.map(m => m.message).join('\\n'); } catch (e) {} if (!msg) msg = $('Envia MSG Texto').first().json.message?.conversation || '[mensagem padrão do disparo]'; return [ String(l.telefone || ''), String($('Dados_Evolution').first().json.instancia || ''), String(l.nome_empresa || ''), String(l.especialidades || ''), 'CRM', msg ]; })() }}"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "15ab3a71-7797-4175-8cda-29795b5cab56",
+   "name": "Mandar mídia?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    240,
+    304
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "6c299231-f847-5ea8-98dc-98d07e1df623",
+       "leftValue": "={{ !!$json.url }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "756675f9-ad29-4ad6-b170-dfb458016096",
+   "name": "Envia mídia",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "onError": "continueRegularOutput",
+   "position": [
+    448,
+    224
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Dados_Evolution').first().json.server_url }}/message/sendMedia/{{ $('Dados_Evolution').first().json.instancia }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "apikey",
+       "value": "={{ $('Dados_Evolution').first().json.api_key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: String($('Loop Over Items').first().json.telefone), mediatype: $json.tipo === 'video' ? 'video' : 'image', mimetype: $json.tipo === 'video' ? 'video/mp4' : ($json.url.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'), caption: $json.legenda || '', media: $json.url, fileName: $json.url.split('?')[0].split('/').pop() }) }}",
+    "options": {}
+   }
+  },
+  {
+   "id": "98015f60-daf4-4cca-889d-9ffdfec6d09b",
+   "name": "Nota: banco",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {
+    "content": "## Ligação com o agente (banco Postgres)\n- **Checa lead no banco**: pula quem pediu para sair ou já está conversando.\n- **Registra lead no banco**: guarda o lead como nicho **oficina** e a mensagem enviada.\n- **Envia mídia**: no 1º contato manda a imagem do case Garage 03 (sdr_midias, nicho oficina, usar_no_disparo). Não depende do sdr_config.midia_no_disparo.",
+    "height": 220,
+    "width": 520,
+    "color": 4
+   }
+  },
+  {
+   "id": "d1e8b3be-857b-47cc-b424-0e914bf1498c",
+   "name": "Verifica WhatsApp",
+   "notes": "Pergunta a Evolution se o numero tem WhatsApp e qual o JID exato (no Brasil muitos celulares estao sem o 9).",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -2176,
+    336
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Dados_Evolution').first().json.server_url }}/chat/whatsappNumbers/{{ $('Dados_Evolution').first().json.instancia }}",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "apikey",
+       "value": "={{ $('Dados_Evolution').first().json.api_key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ numbers: [ String($('Pega lead da fila').first().json.telefone || '').split('@')[0] ] }) }}",
+    "options": {}
+   }
+  },
+  {
+   "id": "11785d09-34c4-4a80-a1b4-7a3081c0edb1",
+   "name": "Tem WhatsApp?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -1968,
+    336
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "loose",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "220d9433-f0f3-4620-9244-81ee5bc6d611",
+       "leftValue": "={{ $json.exists === true && !!$json.jid }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "looseTypeValidation": true,
+    "options": {}
+   }
+  },
+  {
+   "id": "e4e5b552-0c86-492b-b5df-39c57ac41eaa",
+   "name": "Atualiza telefone na fila",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    -1744,
+    240
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "UPDATE sdr_fila SET telefone = $2 WHERE id = $1::bigint\nRETURNING id AS fila_id, nome_empresa, telefone, endereco, cidade,\n          coalesce(website, '') AS website, '' AS rating, '' AS reviews,\n          especialidades, '' AS mensagem, '' AS disparo, origem;\n",
+    "options": {
+     "queryReplacement": "={{ [ $('Pega lead da fila').first().json.fila_id, $json.jid ] }}"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "de47fe96-4117-4a0a-a843-fd0e2fe0d9ea",
+   "name": "Motivo sem WhatsApp",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    -1744,
+    432
+   ],
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "fba651dd-da3f-4516-a9bc-4948e5cad435",
+       "name": "motivo",
+       "value": "sem WhatsApp",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "234080c7-5a51-4858-859d-2fa51bc5ce9c",
+   "name": "Checa conexão",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 3000,
+   "onError": "continueRegularOutput",
+   "position": [
+    -3776,
+    876
+   ],
+   "parameters": {
+    "url": "https://zap7.mercadonet.com.br/instance/connectionState/Weap-0859",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "options": {
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "jGDZFufvpwAyTsjz",
+     "name": "Evolution API"
+    }
+   }
+  },
+  {
+   "id": "98634851-e48d-43ee-957a-85788b704309",
+   "name": "Número conectado?",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -3336,
+    876
+   ],
+   "parameters": {
+    "jsCode": "// Só dispara com o número conectado na Evolution. Se caiu, não pega lead da fila.\n// Avisa o Márcio só quando o estado muda (caiu / voltou). O último estado fica no Redis (weap:disparo:conexao:Weap-0859).\n// Se a checagem não responder, segue como antes (o Verifica WhatsApp ainda protege).\nconst instancia = 'Weap-0859';\nconst r = $('Checa conexão').first().json || {};\nconst estado = (r.instance && r.instance.state) || r.state || '';\nconst conectado = estado ? estado === 'open' : true;\nconst ultimo = String($input.first().json.ultimo || '');\nconst novo = conectado ? 'ok' : 'caiu';\nlet aviso = '';\nif (estado && novo !== ultimo) {\n  if (novo === 'caiu') aviso = `⚠️ O número ${instancia} caiu na Evolution (estado: ${estado}). O disparo dele está parado e volta sozinho quando o número reconectar.`;\n  else if (ultimo === 'caiu') aviso = `✅ O número ${instancia} reconectou na Evolution e o disparo dele voltou.`;\n}\nconst gravar = !!estado && novo !== ultimo;\nreturn [{ json: { conectado, estado: estado || 'sem resposta', aviso, gravar, novo } }];\n"
+   }
+  },
+  {
+   "id": "71e607e3-a852-4ad5-ad3d-b7acae7a63dc",
+   "name": "Conectado?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -3116,
+    796
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "1f17c8fe-2491-479d-aec2-58c9e5366873",
+       "leftValue": "={{ $json.conectado }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "a82c80d4-366e-4370-aba1-b0c7b335053d",
+   "name": "Avisar queda?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -3116,
+    976
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "40e22207-b80b-483e-88b4-ba1ea5f5e6a8",
+       "leftValue": "={{ $json.gravar }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "1d48638d-56fb-4b02-af4f-7413dc3141a2",
+   "name": "Config de avisos",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "onError": "continueRegularOutput",
+   "position": [
+    -2676,
+    976
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "SELECT (SELECT valor FROM sdr_config WHERE chave = 'evolution_url') AS evolution_url,\n       (SELECT valor FROM sdr_config WHERE chave = 'instancia_avisos') AS instancia_avisos;",
+    "options": {}
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   }
+  },
+  {
+   "id": "69e278e2-693c-4dd3-847c-7a868d8fa219",
+   "name": "Avisa queda",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "onError": "continueRegularOutput",
+   "position": [
+    -2456,
+    976
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ String($json.evolution_url || '').replace(/\\/$/, '') }}/message/sendText/{{ $json.instancia_avisos }}",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ number: '5541991348881', text: $('Número conectado?').first().json.aviso }) }}",
+    "options": {}
+   },
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "jGDZFufvpwAyTsjz",
+     "name": "Evolution API"
+    }
+   }
+  },
+  {
+   "id": "0036f3d3-9c2a-48ac-962f-e2493e9910f4",
+   "name": "Nota: conexão",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -3816,
+    736
+   ],
+   "parameters": {
+    "content": "## Checa conexão\nAntes de pegar lead da fila, confere se o número está conectado na Evolution. Caiu: não pega lead. Quem desliga/religa o workflow e avisa o Márcio é o \"00 - Monitor de conexão dos disparos\".",
+    "height": 420,
+    "width": 1160,
+    "color": 3
+   }
+  },
+  {
+   "id": "5b0b4942-dc81-4961-98af-2327972b0364",
+   "name": "Último estado",
+   "type": "n8n-nodes-base.redis",
+   "typeVersion": 1,
+   "alwaysOutputData": true,
+   "onError": "continueRegularOutput",
+   "position": [
+    -3556,
+    876
+   ],
+   "parameters": {
+    "operation": "get",
+    "propertyName": "ultimo",
+    "key": "weap:disparo:conexao:Weap-0859",
+    "keyType": "automatic",
+    "options": {}
+   },
+   "credentials": {
+    "redis": {
+     "id": "90u3JIjPmHdGeWVZ",
+     "name": "Redis account"
+    }
+   }
+  },
+  {
+   "id": "f16c0a11-3ca5-4d69-8934-cdbccd22445b",
+   "name": "Guarda estado",
+   "type": "n8n-nodes-base.redis",
+   "typeVersion": 1,
+   "onError": "continueRegularOutput",
+   "position": [
+    -2896,
+    1176
+   ],
+   "parameters": {
+    "operation": "set",
+    "key": "weap:disparo:conexao:Weap-0859",
+    "value": "={{ $json.novo }}",
+    "keyType": "string",
+    "expire": false
+   },
+   "credentials": {
+    "redis": {
+     "id": "90u3JIjPmHdGeWVZ",
+     "name": "Redis account"
+    }
+   }
+  },
+  {
+   "id": "598866cd-b8bc-4ec9-88ae-13db17de86b1",
+   "name": "Tem aviso?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -2896,
+    976
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "646bbccd-0b13-4f73-ab82-2926164bd2b6",
+       "leftValue": "={{ $('Número conectado?').first().json.aviso }}",
+       "rightValue": "",
+       "operator": {
+        "type": "string",
+        "operation": "notEmpty",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "f62ad573-19d5-41b4-95e7-9fad89ee1262",
+   "name": "Registra mídia no banco",
+   "type": "n8n-nodes-base.postgres",
+   "typeVersion": 2.6,
+   "position": [
+    656,
+    224
+   ],
+   "parameters": {
+    "operation": "executeQuery",
+    "query": "INSERT INTO sdr_mensagens (lead_id, instancia, direcao, autor, texto)\nVALUES ($1::bigint, $2, 'out', 'disparo', $3);\n",
+    "options": {
+     "queryReplacement": "={{ [ String($('Registra lead no banco').first().json.lead_id), String($('Dados_Evolution').first().json.instancia || ''), '[mídia enviada: #' + $('Registra lead no banco').first().json.midia_id + ' (' + ($('Registra lead no banco').first().json.descricao || '') + ')]' ] }}"
+    }
+   },
+   "credentials": {
+    "postgres": {
+     "id": "ov06Mfk2QKyciOGs",
+     "name": "Postgres Weap SDR"
+    }
+   },
+   "onError": "continueRegularOutput"
+  }
+ ],
+ "connections": {
+  "Filter": {
+   "main": [
+    [
+     {
+      "node": "Dados_Evolution",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 1
+     }
+    ]
+   ]
+  },
+  "Loop Over Items": {
+   "main": [
+    [],
+    [
+     {
+      "node": "Checa lead no banco",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "If": {
+   "main": [
+    [
+     {
+      "node": "Jina AI - Scraper",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Message a model",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Jina AI - Scraper": {
+   "main": [
+    [
+     {
+      "node": "Message a model",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Envia MSG Texto": {
+   "main": [
+    [
+     {
+      "node": "Wait",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Split Out": {
+   "main": [
+    [
+     {
+      "node": "Wait2",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Loop Over Items1": {
+   "main": [
+    [
+     {
+      "node": "Marca enviado na fila",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Envia MSG Texto",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Wait": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Items1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Merge": {
+   "main": [
+    [
+     {
+      "node": "Verifica WhatsApp",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Dados_Evolution": {
+   "main": [
+    [
+     {
+      "node": "Merge",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "PegaMensagem": {
+   "main": [
+    [
+     {
+      "node": "Split Out",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Schedule Trigger": {
+   "main": [
+    [
+     {
+      "node": "Checa conexão",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "If1": {
+   "main": [
+    [
+     {
+      "node": "No Operation, do nothing",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Filter",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Wait2": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Items1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Code": {
+   "main": [
+    [
+     {
+      "node": "Pega lead da fila",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Message a model": {
+   "main": [
+    [
+     {
+      "node": "PegaMensagem",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Checa lead no banco": {
+   "main": [
+    [
+     {
+      "node": "Pular lead?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pular lead?": {
+   "main": [
+    [
+     {
+      "node": "Marca pulado na fila",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Volta dados do lead",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Volta dados do lead": {
+   "main": [
+    [
+     {
+      "node": "If",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Registra lead no banco": {
+   "main": [
+    [
+     {
+      "node": "Mandar mídia?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Mandar mídia?": {
+   "main": [
+    [
+     {
+      "node": "Envia mídia",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pega lead da fila": {
+   "main": [
+    [
+     {
+      "node": "If1",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Marca enviado na fila": {
+   "main": [
+    [
+     {
+      "node": "Registra lead no banco",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Verifica WhatsApp": {
+   "main": [
+    [
+     {
+      "node": "Tem WhatsApp?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tem WhatsApp?": {
+   "main": [
+    [
+     {
+      "node": "Atualiza telefone na fila",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Motivo sem WhatsApp",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Atualiza telefone na fila": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Items",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Motivo sem WhatsApp": {
+   "main": [
+    [
+     {
+      "node": "Marca pulado na fila",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Checa conexão": {
+   "main": [
+    [
+     {
+      "node": "Último estado",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Número conectado?": {
+   "main": [
+    [
+     {
+      "node": "Conectado?",
+      "type": "main",
+      "index": 0
+     },
+     {
+      "node": "Avisar queda?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Conectado?": {
+   "main": [
+    [
+     {
+      "node": "Code",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    []
+   ]
+  },
+  "Avisar queda?": {
+   "main": [
+    [
+     {
+      "node": "Guarda estado",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    []
+   ]
+  },
+  "Config de avisos": {
+   "main": [
+    [
+     {
+      "node": "Avisa queda",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Último estado": {
+   "main": [
+    [
+     {
+      "node": "Número conectado?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Guarda estado": {
+   "main": [
+    [
+     {
+      "node": "Tem aviso?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Tem aviso?": {
+   "main": [
+    [],
+    []
+   ]
+  },
+  "Envia mídia": {
+   "main": [
+    [
+     {
+      "node": "Registra mídia no banco",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "America/Sao_Paulo"
+ }
+}
