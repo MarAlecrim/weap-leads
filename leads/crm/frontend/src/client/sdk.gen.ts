@@ -177,6 +177,9 @@ export class LeadsService {
      * @param data.notaMin
      * @param data.esconderDisparo
      * @param data.uf
+     * @param data.cnpj
+     * @param data.cnae
+     * @param data.cnaeEm
      * @param data.pagina
      * @returns LeadsPagina Successful Response
      * @throws ApiError
@@ -203,6 +206,9 @@ export class LeadsService {
                 nota_min: data.notaMin,
                 esconder_disparo: data.esconderDisparo,
                 uf: data.uf,
+                cnpj: data.cnpj,
+                cnae: data.cnae,
+                cnae_em: data.cnaeEm,
                 pagina: data.pagina
             },
             errors: {

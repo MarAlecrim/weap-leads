@@ -1597,6 +1597,13 @@ export const OpcoesSchema = {
             type: 'array',
             title: 'Nichos'
         },
+        cnaes: {
+            items: {
+                '$ref': '#/components/schemas/Opcao'
+            },
+            type: 'array',
+            title: 'Cnaes'
+        },
         ufs: {
             items: {
                 '$ref': '#/components/schemas/Opcao'
@@ -1641,7 +1648,7 @@ export const OpcoesSchema = {
         }
     },
     type: 'object',
-    required: ['nichos', 'ufs', 'cidades', 'portes', 'ofertas', 'pesos', 'motivos'],
+    required: ['nichos', 'cnaes', 'ufs', 'cidades', 'portes', 'ofertas', 'pesos', 'motivos'],
     title: 'Opcoes'
 } as const;
 

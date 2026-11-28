@@ -316,6 +316,7 @@ export type Opcao = {
 
 export type Opcoes = {
     nichos: Array<Opcao>;
+    cnaes: Array<Opcao>;
     ufs: Array<Opcao>;
     cidades: Array<Cidade>;
     portes: Array<Opcao>;
@@ -512,6 +513,9 @@ export type LeadsBuscarData = {
     capitalMin?: (number | null);
     celular?: boolean;
     cidade?: string;
+    cnae?: (Array<(string)> | null);
+    cnaeEm?: string;
+    cnpj?: string;
     email?: boolean;
     esconderDisparo?: boolean;
     nicho?: string;

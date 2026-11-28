@@ -1,3 +1,6 @@
+import { X } from "lucide-react"
+import { useState } from "react"
+
 import type { Opcoes } from "@/client"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -54,6 +57,23 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
     })
   }
 
+  const [cnaeTexto, setCnaeTexto] = useState("")
+  const nomeCnae = (id: string) =>
+    opcoes?.cnaes.find((c) => c.id === id)?.nome ?? id
+  // aceita escolher da lista ou digitar o código (4781-4/00 ou 4781400)
+  const addCnae = (v: string) => {
+    const achado = opcoes?.cnaes.find((c) => c.nome === v)
+    const digitos = v.replace(/\D/g, "")
+    const id =
+      achado?.id ??
+      (digitos.length === 7 && /^[\d\s./-]+$/.test(v.trim()) ? digitos : "")
+    if (!id) return false
+    if (!f.cnae.includes(id)) set("cnae", [...f.cnae, id])
+    setCnaeTexto("")
+    return true
+  }
+  const comCnpj = f.cnpj.replace(/\D/g, "").length > 0
+
   return (
     <form
       className="grid gap-4 rounded-lg border p-4"
@@ -62,7 +82,88 @@ export function Filtros({ opcoes, valor: f, onChange, onBuscar }: Props) {
         onBuscar()
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-1.5">
+          <Label htmlFor="cnpj">CNPJ</Label>
+          <Input
+            id="cnpj"
+            inputMode="numeric"
+            value={f.cnpj}
+            onChange={(e) => set("cnpj", e.target.value)}
+            placeholder="ex.: 12.345.678/0001-90"
+          />
+          {comCnpj && (
+            <p className="text-xs text-muted-foreground">
+              Com CNPJ, os outros filtros são ignorados. 8 dígitos trazem a
+              matriz e as filiais.
+            </p>
+          )}
+        </div>
+        <div className="grid gap-1.5 sm:col-span-2">
+          <Label htmlFor="cnae">Atividade (CNAE)</Label>
+          <Input
+            id="cnae"
+            list="lista-cnaes"
+            value={cnaeTexto}
+            placeholder="digite o código ou parte do nome e escolha"
+            onChange={(e) => {
+              // escolher na lista já adiciona
+              if (!addCnae(e.target.value) || e.target.value === "")
+                setCnaeTexto(e.target.value)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && cnaeTexto) {
+                e.preventDefault()
+                addCnae(cnaeTexto)
+              }
+            }}
+          />
+          <datalist id="lista-cnaes">
+            {opcoes?.cnaes.map((c) => (
+              <option key={c.id} value={c.nome} />
+            ))}
+          </datalist>
+          {f.cnae.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {f.cnae.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs"
+                >
+                  <span className="truncate">{nomeCnae(c)}</span>
+                  <button
+                    type="button"
+                    aria-label={`Tirar ${c}`}
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() =>
+                      set(
+                        "cnae",
+                        f.cnae.filter((x) => x !== c),
+                      )
+                    }
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="cnae_em">Procurar a atividade na</Label>
+          <select
+            id="cnae_em"
+            className={selectCls}
+            value={f.cnae_em}
+            onChange={(e) =>
+              set("cnae_em", e.target.value as FiltrosBusca["cnae_em"])
+            }
+          >
+            <option value="principal">Atividade principal</option>
+            <option value="secundario">Atividade secundária</option>
+            <option value="ambos">Principal ou secundária</option>
+          </select>
+        </div>
         <div className="grid gap-1.5">
           <Label htmlFor="oferta">Nota pensando em</Label>
           <select

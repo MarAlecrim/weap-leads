@@ -5,6 +5,7 @@ escolhida (view receita.perfil_oferta, montada a partir de receita.clientes_weap
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
@@ -74,6 +75,23 @@ class Filtros:
     socio: bool = False
     nota_min: int | None = None
     esconder_disparo: bool = False
+    cnpj: str = (
+        ""  # só dígitos: 14 = um CNPJ, 8 = todas as filiais, outro = começo do CNPJ
+    )
+    cnae: list[str] = field(default_factory=list)  # códigos de 7 dígitos
+    cnae_em: str = "principal"  # principal | secundario | ambos
+
+
+CNAE_EM = ("principal", "secundario", "ambos")
+
+
+def so_digitos(v: str) -> str:
+    return re.sub(r"\D", "", v or "")
+
+
+def _so_cnpj(f: Filtros) -> Filtros:
+    """Com CNPJ, os outros filtros saem: a ideia é achar aquela empresa."""
+    return Filtros(oferta=f.oferta, cnpj=f.cnpj, celular=False) if f.cnpj else f
 
 
 CELULAR = "(receita.celular(e.telefone1) OR receita.celular(e.telefone2))"
@@ -82,6 +100,29 @@ CELULAR = "(receita.celular(e.telefone1) OR receita.celular(e.telefone2))"
 def _where(f: Filtros, s: Session) -> tuple[str, dict[str, Any]]:
     w: list[str] = []
     p: dict[str, Any] = {}
+    if cnpj := so_digitos(f.cnpj):
+        if len(cnpj) == 14:
+            w.append("e.cnpj = :cnpj")
+            p["cnpj"] = cnpj
+        elif len(cnpj) == 8:
+            w.append("e.cnpj_basico = :cnpj")
+            p["cnpj"] = cnpj
+        else:
+            w.append("e.cnpj LIKE :cnpj")
+            p["cnpj"] = f"{cnpj[:14]}%"
+    cnaes = [c for c in dict.fromkeys(so_digitos(x) for x in f.cnae) if len(c) == 7]
+    if f.cnae:
+        p["cnae"] = cnaes or ["0"]
+        principal = "e.cnae_principal = ANY(CAST(:cnae AS text[]))"
+        secundaria = "e.cnaes_secundarios && CAST(:cnae AS text[])"
+        em = f.cnae_em if f.cnae_em in CNAE_EM else "principal"
+        w.append(
+            {
+                "principal": principal,
+                "secundario": secundaria,
+                "ambos": f"({principal} OR {secundaria})",
+            }[em]
+        )
     if f.nicho:
         cnaes = [
             r[0]
@@ -612,6 +653,7 @@ def _total(s: Session, f: Filtros, w: str, p: dict[str, Any], col: str | None) -
 
 
 def buscar(s: Session, f: Filtros, pagina: int = 1) -> tuple[list[dict[str, Any]], int]:
+    f = _so_cnpj(f)
     w, p = _where(f, s)
     p |= _params_base(f, s)
     sql, col = _consulta(s, f, w, "LIMIT :lim OFFSET :off")
@@ -630,6 +672,7 @@ def buscar(s: Session, f: Filtros, pagina: int = 1) -> tuple[list[dict[str, Any]
 def para_planilha(
     s: Session, f: Filtros, cnpjs: list[str] | None = None
 ) -> list[dict[str, Any]]:
+    f = _so_cnpj(f)
     w, p = _where(f, s)
     p |= _params_base(f, s)
     if cnpjs:
@@ -669,6 +712,14 @@ def ficha(s: Session, cnpj: str, oferta: str = "geral") -> dict[str, Any] | None
         for x in socios
     ]
     return lead
+
+
+def cnaes(s: Session) -> list[dict[str, str]]:
+    """Todas as atividades (CNAE) da Receita, para escolher na busca."""
+    rs = s.execute(text("SELECT codigo, descricao FROM receita.cnaes ORDER BY codigo"))
+    return [
+        {"id": r[0], "nome": f"{texto.cnae(r[0])} {r[1] or ''}".strip()} for r in rs
+    ]
 
 
 def nichos(s: Session) -> list[dict[str, str]]:

@@ -73,6 +73,7 @@ class Perfil(Opcao):
 
 class Opcoes(BaseModel):
     nichos: list[Opcao]
+    cnaes: list[Opcao]
     ufs: list[Opcao]
     cidades: list[Cidade]
     portes: list[Opcao]
@@ -235,6 +236,9 @@ def _filtros(
     nota_min: int | None = None,
     esconder_disparo: bool = False,
     uf: str = "",
+    cnpj: str = "",
+    cnae: list[str] | None = None,
+    cnae_em: str = "principal",
 ) -> repo.Filtros:
     return repo.Filtros(
         oferta=oferta,
@@ -254,6 +258,9 @@ def _filtros(
         nota_min=nota_min,
         esconder_disparo=esconder_disparo,
         uf=uf.strip().upper(),
+        cnpj=repo.so_digitos(cnpj),
+        cnae=[c for c in (cnae or []) if c.strip()],
+        cnae_em=cnae_em,
     )
 
 
@@ -262,6 +269,7 @@ def opcoes(session: SessionDep, _u: CurrentUser) -> Any:
     """Listas para os filtros da busca."""
     return Opcoes(
         nichos=[Opcao(**n) for n in repo.nichos(session)],
+        cnaes=[Opcao(**c) for c in repo.cnaes(session)],
         ufs=[Opcao(**u) for u in repo.ufs(session)],
         cidades=[Cidade(**c) for c in repo.cidades(session)],
         portes=[Opcao(id=k, nome=v) for k, v in texto.FAIXAS.items()],
@@ -292,6 +300,9 @@ def buscar(
     nota_min: int | None = None,
     esconder_disparo: bool = False,
     uf: str = "",
+    cnpj: str = "",
+    cnae: Annotated[list[str] | None, Query()] = None,
+    cnae_em: str = "principal",
     pagina: int = 1,
 ) -> Any:
     """Busca na base da Receita, da nota mais alta para a mais baixa."""
@@ -313,6 +324,9 @@ def buscar(
         nota_min,
         esconder_disparo,
         uf=uf,
+        cnpj=cnpj,
+        cnae=cnae,
+        cnae_em=cnae_em,
     )
     linhas, total = repo.buscar(session, f, pagina)
     return LeadsPagina(
