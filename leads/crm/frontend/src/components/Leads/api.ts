@@ -18,6 +18,9 @@ export type FiltrosBusca = {
   socio: boolean
   nota_min: string
   esconder_disparo: boolean
+  cnpj: string
+  cnae: string[]
+  cnae_em: "principal" | "secundario" | "ambos"
 }
 
 export const filtrosPadrao: FiltrosBusca = {
@@ -38,6 +41,9 @@ export const filtrosPadrao: FiltrosBusca = {
   socio: false,
   nota_min: "",
   esconder_disparo: false,
+  cnpj: "",
+  cnae: [],
+  cnae_em: "principal",
 }
 
 /** "50.000" ou "50000,50" vira número; vazio vira undefined. */
@@ -68,6 +74,9 @@ export function paraApi(f: FiltrosBusca) {
     socio: f.socio || undefined,
     notaMin: f.nota_min === "" ? undefined : Number(f.nota_min),
     esconderDisparo: f.esconder_disparo || undefined,
+    cnpj: f.cnpj.replace(/\D/g, "") || undefined,
+    cnae: f.cnae.length ? f.cnae : undefined,
+    cnaeEm: f.cnae.length ? f.cnae_em : undefined,
   }
 }
 

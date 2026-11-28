@@ -160,3 +160,41 @@ def test_cidades_trazem_o_estado(
     ).json()
     ids = {u["id"] for u in j["ufs"]}
     assert all(c["uf"] in ids for c in j["cidades"])
+
+
+def test_busca_por_cnpj(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    h = superuser_token_headers
+    um = _busca(client, h)["data"][0]["cnpj"]
+    # com pontuação e mesmo com outro filtro marcado, acha aquela empresa
+    fmt = f"{um[:2]}.{um[2:5]}.{um[5:8]}/{um[8:12]}-{um[12:]}"
+    j = _busca(client, h, cnpj=fmt, celular=True, uf="XX")
+    assert [x["cnpj"] for x in j["data"]] == [um]
+    # 8 dígitos = matriz e filiais
+    basico = _busca(client, h, cnpj=um[:8])["data"]
+    assert basico and all(x["cnpj"].startswith(um[:8]) for x in basico)
+    assert _busca(client, h, cnpj="99999999999999")["count"] == 0
+
+
+def test_busca_por_cnae(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    h = superuser_token_headers
+    cnaes = client.get(f"{settings.API_V1_STR}/leads/opcoes", headers=h).json()["cnaes"]
+    if not cnaes:
+        pytest.skip("receita.cnaes vazia")
+    c = cnaes[0]["id"]
+    assert cnaes[0]["nome"].startswith(f"{c[:4]}-{c[4]}/{c[5:]}")
+    princ = _busca(client, h, cnae=f"{c[:4]}-{c[4]}/{c[5:]}")
+    assert all(x["cnae"] == c for x in princ["data"])
+    sec = _busca(client, h, cnae=c, cnae_em="secundario")["count"]
+    ambos = _busca(client, h, cnae=c, cnae_em="ambos")["count"]
+    assert ambos >= max(princ["count"], sec)
+    # dois códigos somam
+    outro = cnaes[1]["id"] if len(cnaes) > 1 else c
+    dois = _busca(client, h, cnae=[c, outro])["count"]
+    assert dois == princ["count"] + (
+        _busca(client, h, cnae=outro)["count"] if outro != c else 0
+    )
+    assert _busca(client, h, cnae="123")["count"] == 0

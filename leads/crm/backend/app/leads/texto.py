@@ -152,3 +152,9 @@ def anos(d: date | None) -> int | None:
         return None
     hoje = date.today()
     return hoje.year - d.year - ((hoje.month, hoje.day) < (d.month, d.day))
+
+
+def cnae(c: str | None) -> str:
+    """4781400 vira 4781-4/00 (como aparece no cartão CNPJ)."""
+    c = c or ""
+    return f"{c[:4]}-{c[4]}/{c[5:]}" if len(c) == 7 and c.isdigit() else c

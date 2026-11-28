@@ -195,3 +195,16 @@ cd /opt/weap-leads && docker compose up -d --build api web
 ```
 
 Sem `EVOLUTION_APIS`, a tela funciona igual e só não mostra a coluna.
+
+## Atualização: busca por CNPJ e por atividade (CNAE)
+
+Na **Busca de leads** aparecem três campos novos:
+- **CNPJ**: com pontuação ou sem. Com 14 dígitos traz aquela empresa, com 8 dígitos traz a matriz e as filiais. Quando tem CNPJ, os outros filtros são ignorados.
+- **Atividade (CNAE)**: escolha uma ou mais atividades da lista da Receita (digite o código ou parte do nome).
+- **Procurar a atividade na**: atividade principal, secundária, ou principal ou secundária.
+
+A planilha e o "Mandar para o disparo" usam os mesmos filtros. Não há migração.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```
