@@ -208,3 +208,11 @@ A planilha e o "Mandar para o disparo" usam os mesmos filtros. Não há migraç�
 ```
 cd /opt/weap-leads && docker compose up -d --build api web
 ```
+
+## Atualização: nichos no Admin
+
+Em **Admin > Nichos da busca** o administrador cria, renomeia e apaga os nichos da Busca de leads e escolhe as atividades (CNAE) de cada um. Grava em `receita.nicho_cnaes`, a mesma tabela de antes. Os nichos do agente (`sdr_nichos`, no banco do disparo) não mudam. Não há migração.
+
+```
+cd /opt/weap-leads && docker compose up -d --build api web
+```

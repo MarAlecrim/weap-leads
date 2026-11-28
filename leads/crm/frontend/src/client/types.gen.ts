@@ -265,6 +265,17 @@ export type NewPassword = {
     new_password: string;
 };
 
+export type Nicho = {
+    id: string;
+    nome: string;
+    cnaes: Array<Opcao>;
+};
+
+export type NichoDados = {
+    nome: string;
+    cnaes: Array<(string)>;
+};
+
 export type Nota = {
     id: number;
     autor: string;
@@ -551,6 +562,27 @@ export type LeadsAlterarNumeroData = {
 };
 
 export type LeadsAlterarNumeroResponse = (unknown);
+
+export type LeadsNichosResponse = (Array<Nicho>);
+
+export type LeadsCriarNichoData = {
+    requestBody: NichoDados;
+};
+
+export type LeadsCriarNichoResponse = (string);
+
+export type LeadsAlterarNichoData = {
+    nicho: string;
+    requestBody: NichoDados;
+};
+
+export type LeadsAlterarNichoResponse = (string);
+
+export type LeadsApagarNichoData = {
+    nicho: string;
+};
+
+export type LeadsApagarNichoResponse = (void);
 
 export type LeadsFichaData = {
     cnpj: string;

@@ -4,8 +4,9 @@ import { Suspense } from "react"
 
 import { type UserPublic, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
-import { Numeros } from "@/components/Admin/Numeros"
 import { columns, type UserTableData } from "@/components/Admin/columns"
+import { Nichos } from "@/components/Admin/Nichos"
+import { Numeros } from "@/components/Admin/Numeros"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
@@ -70,6 +71,7 @@ function Admin() {
       </div>
       <UsersTable />
       <Numeros />
+      <Nichos />
     </div>
   )
 }
