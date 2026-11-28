@@ -43,3 +43,7 @@ No "Mandar para o disparo" dá para escolher quais números disparam aquela leva
 
 Admin → Números de WhatsApp: estados, responsável, celular de aviso e ligado/desligado de cada número, sem mexer no banco. Só administrador. Instalação: `n8n/atualizacao-tela-de-numeros/LEIA-ME.md`.
 
+
+### Número por nicho: oficinas (28/11/2026)
+
+O 41 98861-0859 (Weap-0859) prospecta só oficinas mecânicas, oferecendo site e gestão do Instagram com o case Garage 03 (imagem no 1º contato, vídeo com o agente). Ele só pega as levas em que foi marcado no "Mandar para o disparo"; nunca a fila geral. Instalação: `n8n/atualizacao-disparo-oficinas/LEIA-ME.md`.
